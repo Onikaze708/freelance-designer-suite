@@ -1,0 +1,462 @@
+{
+  "settings": {
+    "businessName": "Studio Aurora",
+    "designerName": "Valentina Cruz",
+    "email": "hola@studioaurora.com",
+    "phone": "+1 555 310 8821",
+    "address": "Brooklyn, New York",
+    "currency": "USD",
+    "taxPercentage": 7,
+    "paymentTerms": "50% de anticipo para iniciar y 50% contra entrega final.",
+    "deliveryEstimate": "5 a 10 días hábiles según alcance.",
+    "termsOfService": "La propuesta incluye una ronda de revisión. Cambios fuera de alcance se cotizan aparte.",
+    "quoteClosingMessage": "Gracias por considerar este estudio para tu proyecto.",
+    "invoiceClosingMessage": "Gracias por tu confianza. Si necesitas soporte adicional, escríbeme.",
+    "logoUrl": "",
+    "paypalLink": "https://paypal.me/studioaurora",
+    "revisionSettings": {
+      "includedRevisions": 1,
+      "extraRevisionCost": 25
+    },
+    "complexityRates": {
+      "basic": 0,
+      "medium": 0.25,
+      "high": 0.5
+    },
+    "urgencyRates": {
+      "normal": 0,
+      "urgent": 0.2,
+      "veryUrgent": 0.35
+    },
+    "researchFee": {
+      "mode": "percent",
+      "value": 12
+    },
+    "strategyFee": {
+      "mode": "percent",
+      "value": 18
+    }
+  },
+  "clients": [
+    {
+      "id": "client-1",
+      "name": "Laura Medina",
+      "businessName": "Bloom Atelier",
+      "email": "laura@bloomatelier.com",
+      "phone": "+1 555 111 9001",
+      "notes": "Cliente enfocada en contenido premium para Instagram.",
+      "workHistory": "Identidad visual ligera y piezas de temporada.",
+      "createdAt": "2026-03-01T10:00:00.000Z",
+      "updatedAt": "2026-03-01T10:00:00.000Z"
+    },
+    {
+      "id": "client-2",
+      "name": "Daniel Rojas",
+      "businessName": "PlaySpark Learning",
+      "email": "daniel@playspark.co",
+      "phone": "+1 555 992 1010",
+      "notes": "Interesado en juegos didácticos y materiales editoriales.",
+      "workHistory": "Conceptualización de producto educativo.",
+      "createdAt": "2026-03-02T13:30:00.000Z",
+      "updatedAt": "2026-03-02T13:30:00.000Z"
+    }
+  ],
+  "services": [
+    {
+      "category": "Identidad visual",
+      "name": "Logotipo básico",
+      "base_price": 150,
+      "unit": "proyecto",
+      "options": [
+        "complejidad",
+        "urgencia",
+        "revisiones"
+      ]
+    },
+    {
+      "category": "Identidad visual",
+      "name": "Logotipo profesional",
+      "base_price": 300,
+      "unit": "proyecto",
+      "options": [
+        "complejidad",
+        "urgencia",
+        "revisiones",
+        "investigacion"
+      ]
+    },
+    {
+      "category": "Identidad visual",
+      "name": "Rediseño de logotipo",
+      "base_price": 220,
+      "unit": "proyecto",
+      "options": [
+        "complejidad",
+        "urgencia"
+      ]
+    },
+    {
+      "category": "Identidad visual",
+      "name": "Sistema básico de identidad visual",
+      "base_price": 600,
+      "unit": "proyecto",
+      "options": [
+        "complejidad",
+        "investigacion"
+      ]
+    },
+    {
+      "category": "Identidad visual",
+      "name": "Manual de identidad visual simple",
+      "base_price": 750,
+      "unit": "proyecto",
+      "options": [
+        "complejidad"
+      ]
+    },
+    {
+      "category": "Identidad visual",
+      "name": "Diseño de icono o símbolo de marca",
+      "base_price": 120,
+      "unit": "proyecto",
+      "options": [
+        "complejidad"
+      ]
+    },
+    {
+      "category": "Redes sociales",
+      "name": "Post para redes sociales",
+      "base_price": 35,
+      "unit": "pieza",
+      "options": [
+        "cantidad",
+        "urgencia"
+      ]
+    },
+    {
+      "category": "Redes sociales",
+      "name": "Carrusel de Instagram",
+      "base_price": 90,
+      "unit": "pieza",
+      "options": [
+        "complejidad",
+        "urgencia"
+      ]
+    },
+    {
+      "category": "Redes sociales",
+      "name": "Story promocional",
+      "base_price": 25,
+      "unit": "pieza",
+      "options": [
+        "cantidad"
+      ]
+    },
+    {
+      "category": "Redes sociales",
+      "name": "Miniatura para YouTube",
+      "base_price": 30,
+      "unit": "pieza",
+      "options": [
+        "cantidad",
+        "urgencia"
+      ]
+    },
+    {
+      "category": "Redes sociales",
+      "name": "Banner para redes sociales",
+      "base_price": 45,
+      "unit": "pieza",
+      "options": [
+        "cantidad"
+      ]
+    },
+    {
+      "category": "Redes sociales",
+      "name": "Paquete mensual redes sociales (12 diseños)",
+      "base_price": 300,
+      "unit": "proyecto",
+      "options": []
+    },
+    {
+      "category": "Redes sociales",
+      "name": "Plantilla editable para redes",
+      "base_price": 90,
+      "unit": "proyecto",
+      "options": [
+        "complejidad"
+      ]
+    },
+    {
+      "category": "Publicidad y marketing",
+      "name": "Flyer digital",
+      "base_price": 55,
+      "unit": "pieza",
+      "options": [
+        "urgencia",
+        "revisiones"
+      ]
+    },
+    {
+      "category": "Publicidad y marketing",
+      "name": "Flyer para impresión",
+      "base_price": 70,
+      "unit": "pieza",
+      "options": [
+        "urgencia",
+        "revisiones"
+      ]
+    },
+    {
+      "category": "Publicidad y marketing",
+      "name": "Poster promocional",
+      "base_price": 90,
+      "unit": "pieza",
+      "options": [
+        "complejidad"
+      ]
+    },
+    {
+      "category": "Publicidad y marketing",
+      "name": "Banner publicitario web",
+      "base_price": 60,
+      "unit": "pieza",
+      "options": [
+        "cantidad"
+      ]
+    },
+    {
+      "category": "Publicidad y marketing",
+      "name": "Diseño de anuncio para campañas digitales",
+      "base_price": 80,
+      "unit": "pieza",
+      "options": [
+        "cantidad"
+      ]
+    },
+    {
+      "category": "Publicidad y marketing",
+      "name": "Brochure de 2 páginas",
+      "base_price": 120,
+      "unit": "proyecto",
+      "options": [
+        "complejidad"
+      ]
+    },
+    {
+      "category": "Publicidad y marketing",
+      "name": "Brochure de 4 páginas",
+      "base_price": 200,
+      "unit": "proyecto",
+      "options": [
+        "complejidad"
+      ]
+    },
+    {
+      "category": "Publicidad y marketing",
+      "name": "Diseño de menú para restaurante",
+      "base_price": 140,
+      "unit": "proyecto",
+      "options": [
+        "complejidad",
+        "revisiones"
+      ]
+    },
+    {
+      "category": "Diseño editorial",
+      "name": "Diseño de portada de libro",
+      "base_price": 180,
+      "unit": "proyecto",
+      "options": [
+        "complejidad",
+        "urgencia",
+        "revisiones"
+      ]
+    },
+    {
+      "category": "Diseño editorial",
+      "name": "Diseño de contraportada de libro",
+      "base_price": 90,
+      "unit": "proyecto",
+      "options": [
+        "complejidad"
+      ]
+    },
+    {
+      "category": "Diseño editorial",
+      "name": "Diseño completo de portada, contraportada y lomo",
+      "base_price": 260,
+      "unit": "proyecto",
+      "options": [
+        "complejidad",
+        "urgencia"
+      ]
+    },
+    {
+      "category": "Diseño editorial",
+      "name": "Maquetación de libro hasta 100 páginas",
+      "base_price": 350,
+      "unit": "proyecto",
+      "options": [
+        "complejidad"
+      ]
+    },
+    {
+      "category": "Diseño editorial",
+      "name": "Maquetación de libro de 100 a 300 páginas",
+      "base_price": 550,
+      "unit": "proyecto",
+      "options": [
+        "complejidad"
+      ]
+    },
+    {
+      "category": "Diseño editorial",
+      "name": "Diseño de ebook",
+      "base_price": 220,
+      "unit": "proyecto",
+      "options": [
+        "complejidad"
+      ]
+    },
+    {
+      "category": "Diseño editorial",
+      "name": "Diseño de revista",
+      "base_price": 600,
+      "unit": "proyecto",
+      "options": [
+        "complejidad"
+      ]
+    },
+    {
+      "category": "Diseño editorial",
+      "name": "Maquetación de revista",
+      "base_price": 450,
+      "unit": "proyecto",
+      "options": [
+        "complejidad"
+      ]
+    },
+    {
+      "category": "Diseño editorial",
+      "name": "Diseño de catálogo editorial",
+      "base_price": 400,
+      "unit": "proyecto",
+      "options": [
+        "complejidad"
+      ]
+    },
+    {
+      "category": "Diseño web",
+      "name": "Banner web",
+      "base_price": 60,
+      "unit": "pieza",
+      "options": [
+        "cantidad"
+      ]
+    },
+    {
+      "category": "Diseño web",
+      "name": "Diseño de landing page",
+      "base_price": 300,
+      "unit": "proyecto",
+      "options": [
+        "complejidad"
+      ]
+    },
+    {
+      "category": "Diseño web",
+      "name": "Diseño visual de sitio web simple",
+      "base_price": 450,
+      "unit": "proyecto",
+      "options": [
+        "complejidad"
+      ]
+    },
+    {
+      "category": "Diseño web",
+      "name": "Rediseño visual de sitio web",
+      "base_price": 450,
+      "unit": "proyecto",
+      "options": [
+        "complejidad"
+      ]
+    },
+    {
+      "category": "Diseño web",
+      "name": "Actualización de contenido web",
+      "base_price": 100,
+      "unit": "proyecto",
+      "options": []
+    },
+    {
+      "category": "Diseño web",
+      "name": "Mantenimiento web mensual",
+      "base_price": 250,
+      "unit": "mes",
+      "options": []
+    },
+    {
+      "category": "Diseño web",
+      "name": "Diseño de interfaz para aplicación",
+      "base_price": 380,
+      "unit": "proyecto",
+      "options": [
+        "complejidad"
+      ]
+    },
+    {
+      "category": "Diseño corporativo",
+      "name": "Tarjeta de presentación",
+      "base_price": 60,
+      "unit": "pieza",
+      "options": [
+        "cantidad"
+      ]
+    },
+    {
+      "category": "Diseño corporativo",
+      "name": "Hoja membretada",
+      "base_price": 55,
+      "unit": "pieza",
+      "options": []
+    },
+    {
+      "category": "Diseño corporativo",
+      "name": "Plantilla de presentación (PowerPoint / Keynote)",
+      "base_price": 180,
+      "unit": "proyecto",
+      "options": [
+        "complejidad"
+      ]
+    },
+    {
+      "category": "Diseño corporativo",
+      "name": "Firma profesional de correo electrónico",
+      "base_price": 50,
+      "unit": "proyecto",
+      "options": []
+    },
+    {
+      "category": "Diseño corporativo",
+      "name": "Diseño de carpeta corporativa",
+      "base_price": 120,
+      "unit": "proyecto",
+      "options": [
+        "complejidad"
+      ]
+    },
+    {
+      "category": "Diseño corporativo",
+      "name": "Plantilla editable de documentos",
+      "base_price": 140,
+      "unit": "proyecto",
+      "options": [
+        "complejidad"
+      ]
+    }
+  ],
+  "quotes": [],
+  "invoices": [],
+  "payments": []
+}
