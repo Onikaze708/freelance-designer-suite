@@ -1,4 +1,5 @@
-﻿import { localApi } from "./utils/localStore";
+﻿import { localApi, syncLocalSettings } from "./utils/localStore";
+import { loadRemoteStudioSettings, saveRemoteStudioSettings } from "./utils/studioSettingsRemote";
 
 const JSON_HEADERS = {
   "Content-Type": "application/json"
@@ -6,6 +7,16 @@ const JSON_HEADERS = {
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
 const LOCAL_MODE_KEY = "freelance-designer-suite.local-mode";
+
+let lastStudioSettingsSource = "LocalStorage Fallback";
+
+export function getStudioSettingsSource() {
+  return lastStudioSettingsSource;
+}
+
+function setStudioSettingsSource(source) {
+  lastStudioSettingsSource = source;
+}
 
 function readLocalModePreference() {
   if (typeof window === "undefined") {
@@ -68,8 +79,32 @@ async function runWithFallback(remoteCall, localCall) {
   }
 }
 
+async function hydrateStudioSettings(appData) {
+  console.log("SUPABASE READ START");
+
+  try {
+    const remoteSettings = await loadRemoteStudioSettings();
+    if (!remoteSettings) {
+      console.log("SUPABASE READ FAILED");
+      console.log("LOCAL FALLBACK USED");
+      setStudioSettingsSource("LocalStorage Fallback");
+      return appData;
+    }
+
+    const syncedSettings = syncLocalSettings(remoteSettings);
+    console.log("SUPABASE READ SUCCESS");
+    setStudioSettingsSource("Supabase");
+    return { ...appData, settings: syncedSettings };
+  } catch (error) {
+    console.log("SUPABASE READ FAILED", error);
+    console.log("LOCAL FALLBACK USED");
+    setStudioSettingsSource("LocalStorage Fallback");
+    return appData;
+  }
+}
+
 export const api = {
-  bootstrap: () => runWithFallback(() => request("/bootstrap"), () => localApi.bootstrap()),
+  bootstrap: async () => hydrateStudioSettings(await runWithFallback(() => request("/bootstrap"), () => localApi.bootstrap())),
   createClient: (payload) =>
     runWithFallback(
       () => request("/clients", { method: "POST", body: JSON.stringify(payload) }),
@@ -119,9 +154,20 @@ export const api = {
       () => request(`/invoices/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
       () => localApi.updateInvoice(id, payload)
     ),
-  updateSettings: (payload) =>
-    runWithFallback(
-      () => request("/settings", { method: "PUT", body: JSON.stringify(payload) }),
-      () => localApi.updateSettings(payload)
-    )
+  updateSettings: async (payload) => {
+    const localSettings = await localApi.updateSettings(payload);
+
+    try {
+      const remoteSettings = await saveRemoteStudioSettings(localSettings);
+      if (remoteSettings) {
+        setStudioSettingsSource("Supabase");
+        return syncLocalSettings(remoteSettings);
+      }
+    } catch (_error) {
+      // Keep local settings as fallback.
+    }
+
+    setStudioSettingsSource("LocalStorage Fallback");
+    return localSettings;
+  }
 };

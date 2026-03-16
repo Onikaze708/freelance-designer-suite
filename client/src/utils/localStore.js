@@ -169,10 +169,20 @@ export function readLocalStore() {
   return clone(ensureLocalStore());
 }
 
+export function readLocalSettings() {
+  return readLocalStore().settings;
+}
+
 function writeLocalStore(nextStore) {
   const normalized = normalizeStore(nextStore);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
   return clone(normalized);
+}
+
+export function syncLocalSettings(nextSettings) {
+  const current = readLocalStore();
+  current.settings = mergeSettings({ ...current.settings, ...nextSettings });
+  return writeLocalStore(current).settings;
 }
 
 function updateLocalStore(mutator) {

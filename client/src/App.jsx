@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from "react";
-import { api } from "./api";
+import { api, getStudioSettingsSource } from "./api";
 import { Layout } from "./components/Layout";
 import { StatCard } from "./components/StatCard";
 import { SectionHeader } from "./components/SectionHeader";
@@ -479,12 +479,14 @@ export default function App() {
   const [data, setData] = useState({ settings: null, clients: [], services: [], quotes: [], invoices: [], payments: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [settingsSource, setSettingsSource] = useState("LocalStorage Fallback");
 
   async function loadApp() {
     try {
       setLoading(true);
       setError("");
       setData(await api.bootstrap());
+      setSettingsSource(getStudioSettingsSource());
     } catch (nextError) {
       setError(nextError.message);
     } finally {
@@ -537,6 +539,7 @@ export default function App() {
 
   async function handleUpdateSettings(payload) {
     await api.updateSettings(payload);
+    setSettingsSource(getStudioSettingsSource());
     await loadApp();
   }
 
@@ -579,6 +582,10 @@ export default function App() {
                 title="Configuración"
                 description="Ajusta datos del estudio, reglas de cálculo y textos base para cotizaciones y facturas."
               />
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-600">
+                <span className="font-medium text-ink">Data Source:</span>
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${settingsSource === "Supabase" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{settingsSource}</span>
+              </div>
               <SettingsForm settings={data.settings} onSubmit={handleUpdateSettings} />
               <div className="panel p-6 text-sm text-slate-600">
                 <p className="font-semibold text-ink">Estructura futura preparada</p>
@@ -594,6 +601,7 @@ export default function App() {
     </Layout>
   );
 }
+
 
 
 
