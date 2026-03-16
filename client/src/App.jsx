@@ -106,6 +106,11 @@ function ClientsSection({ clients, onSaveClient, onDeleteClient, dataSource }) {
   const [draftResetToken, setDraftResetToken] = useState(0);
   const [clientError, setClientError] = useState("");
 
+  console.log("CLIENTS PAGE RENDER", {
+    dataSource,
+    totalClients: Array.isArray(clients) ? clients.length : 0
+  });
+
   return (
     <div className="space-y-4">
       <SectionHeader
@@ -142,15 +147,6 @@ function ClientsSection({ clients, onSaveClient, onDeleteClient, dataSource }) {
       />
 
       <div className="panel overflow-hidden">
-        <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
-          <div>
-            <p className="text-sm font-semibold text-ink">{showArchived ? "Cotizaciones archivadas" : "Cotizaciones activas"}</p>
-            <p className="text-xs text-slate-500">{showArchived ? "Revisa propuestas archivadas y mantenlas fuera de la lista principal." : "Administra propuestas vigentes sin mezclar pruebas o cotizaciones cerradas."}</p>
-          </div>
-          <button className="button-secondary" type="button" onClick={() => setShowArchived((current) => !current)}>
-            {showArchived ? "Ver activas" : "Ver archivadas"}
-          </button>
-        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-sand text-slate-500">
@@ -174,10 +170,10 @@ function ClientsSection({ clients, onSaveClient, onDeleteClient, dataSource }) {
                   </td>
                 </tr>
               ))}
-              {visibleQuotes.length === 0 ? (
+              {clients.length === 0 ? (
                 <tr className="border-t border-slate-100">
-                  <td className="px-4 py-6 text-center text-sm text-slate-500" colSpan={6}>
-                    {showArchived ? "No hay cotizaciones archivadas." : "No hay cotizaciones activas guardadas."}
+                  <td className="px-4 py-6 text-center text-sm text-slate-500" colSpan={5}>
+                    A?n no hay clientes guardados. Puedes crear uno desde el formulario superior.
                   </td>
                 </tr>
               ) : null}
