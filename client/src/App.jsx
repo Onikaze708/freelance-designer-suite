@@ -109,7 +109,6 @@ function ClientsSection({ clients, onSaveClient, onDeleteClient, dataSource }) {
   return (
     <div className="space-y-4">
       <SectionHeader
-        eyebrow="CRM ligero"
         title="Clientes"
         description="Guarda los datos esenciales y reutiliza la información en futuras cotizaciones e invoices."
       />
@@ -143,6 +142,15 @@ function ClientsSection({ clients, onSaveClient, onDeleteClient, dataSource }) {
       />
 
       <div className="panel overflow-hidden">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+          <div>
+            <p className="text-sm font-semibold text-ink">{showArchived ? "Cotizaciones archivadas" : "Cotizaciones activas"}</p>
+            <p className="text-xs text-slate-500">{showArchived ? "Revisa propuestas archivadas y mantenlas fuera de la lista principal." : "Administra propuestas vigentes sin mezclar pruebas o cotizaciones cerradas."}</p>
+          </div>
+          <button className="button-secondary" type="button" onClick={() => setShowArchived((current) => !current)}>
+            {showArchived ? "Ver activas" : "Ver archivadas"}
+          </button>
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-sand text-slate-500">
@@ -166,6 +174,13 @@ function ClientsSection({ clients, onSaveClient, onDeleteClient, dataSource }) {
                   </td>
                 </tr>
               ))}
+              {visibleQuotes.length === 0 ? (
+                <tr className="border-t border-slate-100">
+                  <td className="px-4 py-6 text-center text-sm text-slate-500" colSpan={6}>
+                    {showArchived ? "No hay cotizaciones archivadas." : "No hay cotizaciones activas guardadas."}
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
@@ -262,7 +277,21 @@ function ProductionSection({ settings, onSaveQuote }) {
   );
 }
 
-function QuotesSection({ data, editingQuote, onEditQuote, onCancelEdit, onSaveQuote, onSelectQuote, onConvertQuote }) {
+function QuotesSection({
+  data,
+  editingQuote,
+  onEditQuote,
+  onCancelEdit,
+  onSaveQuote,
+  onSelectQuote,
+  onConvertQuote,
+  onDeleteQuote,
+  onDuplicateQuote,
+  onArchiveQuote
+}) {
+  const [showArchived, setShowArchived] = useState(false);
+  const visibleQuotes = data.quotes.filter((quote) => (showArchived ? quote.status === "archived" : quote.status !== "archived"));
+
   return (
     <div className="space-y-4">
       <SectionHeader
@@ -282,6 +311,15 @@ function QuotesSection({ data, editingQuote, onEditQuote, onCancelEdit, onSaveQu
       />
 
       <div className="panel overflow-hidden">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+          <div>
+            <p className="text-sm font-semibold text-ink">{showArchived ? "Cotizaciones archivadas" : "Cotizaciones activas"}</p>
+            <p className="text-xs text-slate-500">{showArchived ? "Revisa propuestas archivadas y mantenlas fuera de la lista principal." : "Administra propuestas vigentes sin mezclar pruebas o cotizaciones cerradas."}</p>
+          </div>
+          <button className="button-secondary" type="button" onClick={() => setShowArchived((current) => !current)}>
+            {showArchived ? "Ver activas" : "Ver archivadas"}
+          </button>
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-sand text-slate-500">
@@ -295,7 +333,7 @@ function QuotesSection({ data, editingQuote, onEditQuote, onCancelEdit, onSaveQu
               </tr>
             </thead>
             <tbody>
-              {data.quotes.map((quote) => (
+              {visibleQuotes.map((quote) => (
                 <tr key={quote.id} className="border-t border-slate-100">
                   <td className="px-4 py-3 font-semibold text-ink">{quote.quoteNumber}</td>
                   <td className="px-4 py-3">{quote.clientSnapshot?.businessName || quote.clientSnapshot?.name}</td>
@@ -313,10 +351,28 @@ function QuotesSection({ data, editingQuote, onEditQuote, onCancelEdit, onSaveQu
                       <button className="button-secondary" type="button" onClick={() => onConvertQuote(quote)}>
                         Convertir
                       </button>
+                      <button className="button-secondary" type="button" onClick={() => onDuplicateQuote(quote)}>
+                        Duplicar
+                      </button>
+                      {quote.status !== "archived" ? (
+                        <button className="button-secondary" type="button" onClick={() => onArchiveQuote(quote)}>
+                          Archivar
+                        </button>
+                      ) : null}
+                      <button className="button-secondary" type="button" onClick={() => onDeleteQuote(quote)}>
+                        Eliminar
+                      </button>
                     </div>
                   </td>
                 </tr>
               ))}
+              {visibleQuotes.length === 0 ? (
+                <tr className="border-t border-slate-100">
+                  <td className="px-4 py-6 text-center text-sm text-slate-500" colSpan={6}>
+                    {showArchived ? "No hay cotizaciones archivadas." : "No hay cotizaciones activas guardadas."}
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
@@ -616,6 +672,51 @@ export default function App() {
     setActiveSection("invoices");
   }
 
+  async function handleDuplicateQuote(quote) {
+    const duplicatedQuote = {
+      ...quote,
+      id: undefined,
+      quoteNumber: undefined,
+      status: "draft",
+      createdAt: undefined,
+      updatedAt: undefined,
+      archivedAt: null,
+      duplicatedFromId: quote.id
+    };
+
+    await api.createQuote(duplicatedQuote);
+    setEditingQuote(null);
+    await loadApp();
+    setActiveSection("quotes");
+  }
+
+  async function handleArchiveQuote(quote) {
+    await api.updateQuote(quote.id, {
+      ...quote,
+      status: "archived",
+      archivedAt: new Date().toISOString()
+    });
+    if (editingQuote?.id === quote.id) {
+      setEditingQuote(null);
+    }
+    await loadApp();
+    setActiveSection("quotes");
+  }
+
+  async function handleDeleteQuote(quote) {
+    const shouldDelete = window.confirm("¿Seguro que deseas eliminar esta cotización?");
+    if (!shouldDelete) {
+      return;
+    }
+
+    await api.deleteQuote(quote.id);
+    if (editingQuote?.id === quote.id) {
+      setEditingQuote(null);
+    }
+    await loadApp();
+    setActiveSection("quotes");
+  }
+
   async function handleUpdateInvoice(invoiceId, payload) {
     await api.updateInvoice(invoiceId, payload);
     await loadApp();
@@ -684,6 +785,9 @@ export default function App() {
               onSaveQuote={handleSaveQuote}
               onSelectQuote={(quote) => exportQuotePdf(quote, data.settings)}
               onConvertQuote={handleConvertQuote}
+              onDuplicateQuote={handleDuplicateQuote}
+              onArchiveQuote={handleArchiveQuote}
+              onDeleteQuote={handleDeleteQuote}
             />
           ) : null}
           {activeSection === "invoices" ? <InvoicesSection data={data} onUpdateInvoice={handleUpdateInvoice} /> : null}

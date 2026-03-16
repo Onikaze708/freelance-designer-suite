@@ -1,5 +1,6 @@
-﻿import { localApi, syncLocalClients, syncLocalSettings } from "./utils/localStore";
+﻿import { localApi, readLocalStore, syncLocalClients, syncLocalQuotes, syncLocalSettings } from "./utils/localStore";
 import { createRemoteClient, deleteRemoteClient, loadRemoteClients, updateRemoteClient } from "./utils/clientsRemote";
+import { createRemoteQuote, deleteRemoteQuote, loadRemoteQuotes, migrateLocalQuotesToRemote, updateRemoteQuote } from "./utils/quotesRemote";
 import { loadRemoteStudioSettings, saveRemoteStudioSettings } from "./utils/studioSettingsRemote";
 import { hasSupabaseConfig, supabase } from "./utils/supabaseClient";
 
@@ -12,6 +13,7 @@ const LOCAL_MODE_KEY = "freelance-designer-suite.local-mode";
 
 let lastStudioSettingsSource = "LocalStorage";
 let lastClientsSource = "LocalStorage Fallback";
+let lastQuotesSource = "LocalStorage Fallback";
 
 export function getStudioSettingsSource() {
   return lastStudioSettingsSource;
@@ -21,12 +23,20 @@ export function getClientsDataSource() {
   return lastClientsSource;
 }
 
+export function getQuotesDataSource() {
+  return lastQuotesSource;
+}
+
 function setStudioSettingsSource(source) {
   lastStudioSettingsSource = source;
 }
 
 function setClientsDataSource(source) {
   lastClientsSource = source;
+}
+
+function setQuotesDataSource(source) {
+  lastQuotesSource = source;
 }
 
 function readLocalModePreference() {
@@ -131,6 +141,37 @@ async function hydrateClients(appData) {
   }
 }
 
+async function hydrateQuotes(appData) {
+  if (!hasSupabaseConfig || !supabase) {
+    setQuotesDataSource("LocalStorage Fallback");
+    return appData;
+  }
+
+  try {
+    const remoteQuotes = await loadRemoteQuotes();
+    if (Array.isArray(remoteQuotes) && remoteQuotes.length > 0) {
+      const syncedQuotes = syncLocalQuotes(remoteQuotes);
+      setQuotesDataSource("Supabase");
+      return { ...appData, quotes: syncedQuotes };
+    }
+
+    const localQuotes = Array.isArray(appData.quotes) ? appData.quotes : [];
+    if (localQuotes.length > 0) {
+      const migratedQuotes = await migrateLocalQuotesToRemote(localQuotes);
+      const syncedQuotes = syncLocalQuotes(migratedQuotes);
+      setQuotesDataSource("Supabase");
+      return { ...appData, quotes: syncedQuotes };
+    }
+
+    const syncedQuotes = syncLocalQuotes([]);
+    setQuotesDataSource("Supabase");
+    return { ...appData, quotes: syncedQuotes };
+  } catch (_error) {
+    setQuotesDataSource("LocalStorage Fallback");
+    return appData;
+  }
+}
+
 export async function signInWithPassword({ email, password }) {
   if (!hasSupabaseConfig || !supabase) {
     throw new Error("Supabase Auth no está configurado.");
@@ -184,7 +225,8 @@ export const api = {
   bootstrap: async () => {
     const baseData = await runWithFallback(() => request("/bootstrap"), () => localApi.bootstrap());
     const withSettings = await hydrateStudioSettings(baseData);
-    return hydrateClients(withSettings);
+    const withClients = await hydrateClients(withSettings);
+    return hydrateQuotes(withClients);
   },
   createClient: async (payload) => {
     if (hasSupabaseConfig && supabase) {
@@ -231,25 +273,79 @@ export const api = {
       () => request(`/services/${id}`, { method: "DELETE" }),
       () => localApi.deleteService(id)
     ),
-  createQuote: (payload) =>
-    runWithFallback(
-      () => request("/quotes", { method: "POST", body: JSON.stringify(payload) }),
-      () => localApi.createQuote(payload)
-    ),
-  updateQuote: (id, payload) =>
-    runWithFallback(
-      () => request(`/quotes/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
-      () => localApi.updateQuote(id, payload)
-    ),
-  convertQuoteToInvoice: (id, payload) =>
-    runWithFallback(
-      () =>
-        request(`/quotes/${id}/convert-to-invoice`, {
-          method: "POST",
-          body: JSON.stringify(payload)
-        }),
-      () => localApi.convertQuoteToInvoice(id, payload)
-    ),
+  createQuote: async (payload) => {
+    if (hasSupabaseConfig && supabase) {
+      try {
+        const remoteQuote = await createRemoteQuote(payload);
+        const current = readLocalStore();
+        syncLocalQuotes([remoteQuote, ...current.quotes.filter((quote) => quote.id !== remoteQuote.id)]);
+        setQuotesDataSource("Supabase");
+        return remoteQuote;
+      } catch (_error) {
+        setQuotesDataSource("LocalStorage Fallback");
+        return localApi.createQuote(payload);
+      }
+    }
+
+    setQuotesDataSource("LocalStorage Fallback");
+    return localApi.createQuote(payload);
+  },
+  updateQuote: async (id, payload) => {
+    if (hasSupabaseConfig && supabase) {
+      try {
+        const remoteQuote = await updateRemoteQuote(id, payload);
+        const current = readLocalStore();
+        syncLocalQuotes(current.quotes.map((quote) => (quote.id === id ? remoteQuote : quote)));
+        setQuotesDataSource("Supabase");
+        return remoteQuote;
+      } catch (_error) {
+        setQuotesDataSource("LocalStorage Fallback");
+        return localApi.updateQuote(id, payload);
+      }
+    }
+
+    setQuotesDataSource("LocalStorage Fallback");
+    return localApi.updateQuote(id, payload);
+  },
+  deleteQuote: async (id) => {
+    if (hasSupabaseConfig && supabase) {
+      try {
+        const remoteResult = await deleteRemoteQuote(id);
+        const current = readLocalStore();
+        syncLocalQuotes(current.quotes.filter((quote) => quote.id !== id));
+        setQuotesDataSource("Supabase");
+        return remoteResult;
+      } catch (_error) {
+        setQuotesDataSource("LocalStorage Fallback");
+        return localApi.deleteQuote(id);
+      }
+    }
+
+    setQuotesDataSource("LocalStorage Fallback");
+    return localApi.deleteQuote(id);
+  },
+  convertQuoteToInvoice: async (id, payload) => {
+    if (hasSupabaseConfig && supabase) {
+      try {
+        const current = readLocalStore();
+        const currentQuote = current.quotes.find((quote) => quote.id === id);
+        if (!currentQuote) {
+          throw new Error("Cotizaci?n no encontrada");
+        }
+
+        const remoteQuote = await updateRemoteQuote(id, { ...currentQuote, status: "approved" });
+        syncLocalQuotes(current.quotes.map((quote) => (quote.id === id ? remoteQuote : quote)));
+        setQuotesDataSource("Supabase");
+        return localApi.convertQuoteToInvoice(id, payload);
+      } catch (_error) {
+        setQuotesDataSource("LocalStorage Fallback");
+        return localApi.convertQuoteToInvoice(id, payload);
+      }
+    }
+
+    setQuotesDataSource("LocalStorage Fallback");
+    return localApi.convertQuoteToInvoice(id, payload);
+  },
   updateInvoice: (id, payload) =>
     runWithFallback(
       () => request(`/invoices/${id}`, { method: "PUT", body: JSON.stringify(payload) }),

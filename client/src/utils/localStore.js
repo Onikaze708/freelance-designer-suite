@@ -208,6 +208,12 @@ export function syncLocalClients(nextClients) {
   return writeLocalStore(current).clients;
 }
 
+export function syncLocalQuotes(nextQuotes) {
+  const current = readLocalStore();
+  current.quotes = Array.isArray(nextQuotes) ? clone(nextQuotes) : current.quotes;
+  return writeLocalStore(current).quotes;
+}
+
 function updateLocalStore(mutator) {
   const current = readLocalStore();
   const nextStore = mutator(current);
@@ -334,6 +340,13 @@ export const localApi = {
       return store;
     });
     return Promise.resolve(saved.quotes.find((item) => item.id === id));
+  },
+  deleteQuote(id) {
+    const saved = updateLocalStore((store) => {
+      store.quotes = store.quotes.filter((quote) => quote.id !== id);
+      return store;
+    });
+    return Promise.resolve({ ok: true, quotes: saved.quotes });
   },
   convertQuoteToInvoice(id, payload) {
     const saved = updateLocalStore((store) => {
