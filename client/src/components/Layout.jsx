@@ -12,11 +12,11 @@ const sections = [
   { key: "settings", label: "Configuración" }
 ];
 
-export function Layout({ activeSection, setActiveSection, children }) {
+export function Layout({ activeSection, setActiveSection, children, userEmail, onSignOut }) {
   return (
     <div className="min-h-screen px-4 py-4 md:px-6 lg:px-8">
       <div className="mx-auto flex max-w-7xl flex-col gap-4">
-        <AppHeader />
+        <AppHeader userEmail={userEmail} onSignOut={onSignOut} />
 
         <div className="grid gap-4 lg:grid-cols-[280px_1fr] lg:items-start">
           <aside className="panel overflow-hidden lg:sticky lg:top-4">

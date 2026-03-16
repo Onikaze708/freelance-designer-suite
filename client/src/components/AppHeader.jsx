@@ -1,6 +1,6 @@
 ﻿import logoIcon from "../assets/logo-icon.png";
 
-export function AppHeader() {
+export function AppHeader({ userEmail, onSignOut }) {
   return (
     <header className="panel border border-white/70 bg-white/95 px-5 py-4 shadow-[0_20px_40px_-28px_rgba(15,23,42,0.28)]">
       <div className="flex items-center justify-between gap-4">
@@ -15,9 +15,17 @@ export function AppHeader() {
           </div>
         </div>
 
-        <div className="hidden text-right md:block">
-          <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Creative Dashboard</p>
-          <p className="mt-1 text-sm text-slate-500">Cotizaciones, producción y facturación en un solo lugar</p>
+        <div className="flex items-center gap-3">
+          <div className="hidden text-right md:block">
+            <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Creative Dashboard</p>
+            <p className="mt-1 text-sm text-slate-500">{userEmail || "Cotizaciones, producción y facturación en un solo lugar"}</p>
+          </div>
+
+          {onSignOut ? (
+            <button className="button-secondary" type="button" onClick={onSignOut}>
+              Cerrar sesión
+            </button>
+          ) : null}
         </div>
       </div>
     </header>

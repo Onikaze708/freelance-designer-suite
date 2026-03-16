@@ -1,5 +1,6 @@
 ﻿import { localApi, syncLocalSettings } from "./utils/localStore";
 import { loadRemoteStudioSettings, saveRemoteStudioSettings } from "./utils/studioSettingsRemote";
+import { hasSupabaseConfig, supabase } from "./utils/supabaseClient";
 
 const JSON_HEADERS = {
   "Content-Type": "application/json"
@@ -8,7 +9,7 @@ const JSON_HEADERS = {
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
 const LOCAL_MODE_KEY = "freelance-designer-suite.local-mode";
 
-let lastStudioSettingsSource = "LocalStorage Fallback";
+let lastStudioSettingsSource = "LocalStorage";
 
 export function getStudioSettingsSource() {
   return lastStudioSettingsSource;
@@ -87,7 +88,7 @@ async function hydrateStudioSettings(appData) {
     if (!remoteSettings) {
       console.log("SUPABASE READ FAILED");
       console.log("LOCAL FALLBACK USED");
-      setStudioSettingsSource("LocalStorage Fallback");
+      setStudioSettingsSource("LocalStorage");
       return appData;
     }
 
@@ -98,10 +99,59 @@ async function hydrateStudioSettings(appData) {
   } catch (error) {
     console.log("SUPABASE READ FAILED", error);
     console.log("LOCAL FALLBACK USED");
-    setStudioSettingsSource("LocalStorage Fallback");
+    setStudioSettingsSource("LocalStorage");
     return appData;
   }
 }
+
+export async function signInWithPassword({ email, password }) {
+  if (!hasSupabaseConfig || !supabase) {
+    throw new Error("Supabase Auth no está configurado.");
+  }
+
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    throw new Error(error.message || "No se pudo iniciar sesión.");
+  }
+}
+
+export async function signOut() {
+  if (!hasSupabaseConfig || !supabase) {
+    return;
+  }
+
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    throw new Error(error.message || "No se pudo cerrar sesión.");
+  }
+}
+
+export async function getCurrentSession() {
+  if (!hasSupabaseConfig || !supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase.auth.getSession();
+  if (error) {
+    throw new Error(error.message || "No se pudo obtener la sesión.");
+  }
+
+  return data.session;
+}
+
+export function subscribeToAuthChanges(callback) {
+  if (!hasSupabaseConfig || !supabase) {
+    return () => {};
+  }
+
+  const subscription = supabase.auth.onAuthStateChange((_event, session) => {
+    callback(session);
+  });
+
+  return () => subscription.data.subscription.unsubscribe();
+}
+
+export { hasSupabaseConfig };
 
 export const api = {
   bootstrap: async () => hydrateStudioSettings(await runWithFallback(() => request("/bootstrap"), () => localApi.bootstrap())),
@@ -167,7 +217,7 @@ export const api = {
       // Keep local settings as fallback.
     }
 
-    setStudioSettingsSource("LocalStorage Fallback");
+    setStudioSettingsSource("LocalStorage");
     return localSettings;
   }
 };

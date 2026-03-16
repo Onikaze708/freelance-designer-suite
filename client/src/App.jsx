@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from "react";
-import { api, getStudioSettingsSource } from "./api";
+import { api, getCurrentSession, getStudioSettingsSource, hasSupabaseConfig, signInWithPassword, signOut, subscribeToAuthChanges } from "./api";
 import { Layout } from "./components/Layout";
 import { StatCard } from "./components/StatCard";
 import { SectionHeader } from "./components/SectionHeader";
@@ -10,6 +10,7 @@ import { PaymentQrCard } from "./components/PaymentQrCard";
 import { SettingsForm } from "./components/SettingsForm";
 import { EditorialQuoteCalculator } from "./components/EditorialQuoteCalculator";
 import { ProductionCalculator } from "./components/ProductionCalculator";
+import { LoginScreen } from "./components/LoginScreen";
 import { exportQuotePdf } from "./utils/pdf";
 import { createInvoiceEmailLink, exportInvoicePdf } from "./utils/invoicePdf";
 import {
@@ -479,7 +480,11 @@ export default function App() {
   const [data, setData] = useState({ settings: null, clients: [], services: [], quotes: [], invoices: [], payments: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [settingsSource, setSettingsSource] = useState("LocalStorage Fallback");
+  const [settingsSource, setSettingsSource] = useState("LocalStorage");
+  const [authLoading, setAuthLoading] = useState(hasSupabaseConfig);
+  const [session, setSession] = useState(null);
+  const [authError, setAuthError] = useState("");
+  const [authSubmitting, setAuthSubmitting] = useState(false);
 
   async function loadApp() {
     try {
@@ -495,7 +500,60 @@ export default function App() {
   }
 
   useEffect(() => {
-    loadApp();
+    if (!hasSupabaseConfig) {
+      setAuthLoading(false);
+      loadApp();
+      return () => {};
+    }
+
+    let isActive = true;
+
+    const unsubscribe = subscribeToAuthChanges(async (nextSession) => {
+      if (!isActive) {
+        return;
+      }
+
+      setSession(nextSession);
+      setAuthLoading(false);
+      setAuthError("");
+
+      if (nextSession) {
+        await loadApp();
+      } else {
+        setData({ settings: null, clients: [], services: [], quotes: [], invoices: [], payments: [] });
+        setLoading(false);
+      }
+    });
+
+    getCurrentSession()
+      .then(async (currentSession) => {
+        if (!isActive) {
+          return;
+        }
+
+        setSession(currentSession);
+        setAuthLoading(false);
+
+        if (currentSession) {
+          await loadApp();
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch((nextError) => {
+        if (!isActive) {
+          return;
+        }
+
+        setAuthError(nextError.message);
+        setAuthLoading(false);
+        setLoading(false);
+      });
+
+    return () => {
+      isActive = false;
+      unsubscribe();
+    };
   }, []);
 
   async function handleSaveClient(editingClient, payload) {
@@ -543,6 +601,34 @@ export default function App() {
     await loadApp();
   }
 
+  async function handleLogin(credentials) {
+    try {
+      setAuthSubmitting(true);
+      setAuthError("");
+      await signInWithPassword(credentials);
+    } catch (nextError) {
+      setAuthError(nextError.message);
+    } finally {
+      setAuthSubmitting(false);
+    }
+  }
+
+  async function handleSignOut() {
+    try {
+      await signOut();
+    } catch (nextError) {
+      setAuthError(nextError.message);
+    }
+  }
+
+  if (authLoading) {
+    return <div className="flex min-h-screen items-center justify-center text-lg text-slate-500">Verificando acceso seguro...</div>;
+  }
+
+  if (hasSupabaseConfig && !session) {
+    return <LoginScreen onSubmit={handleLogin} loading={authSubmitting} error={authError} />;
+  }
+
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center text-lg text-slate-500">Cargando dashboard...</div>;
   }
@@ -552,7 +638,7 @@ export default function App() {
   }
 
   return (
-    <Layout activeSection={activeSection} setActiveSection={setActiveSection}>
+    <Layout activeSection={activeSection} setActiveSection={setActiveSection} userEmail={session?.user?.email} onSignOut={hasSupabaseConfig ? handleSignOut : null}>
       {data.settings ? (
         <>
           {activeSection === "dashboard" ? <Dashboard data={data} /> : null}
@@ -601,6 +687,7 @@ export default function App() {
     </Layout>
   );
 }
+
 
 
 
