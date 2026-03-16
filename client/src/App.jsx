@@ -653,7 +653,7 @@ function PaymentsSection({ data }) {
             <tbody>
               {data.payments.map((payment) => {
                 const invoice = data.invoices.find((entry) => entry.id === payment.invoiceId);
-                const client = data.clients.find((entry) => entry.id === payment.clientId);
+                const client = data.clients.find((entry) => entry.id === (payment.clientId || invoice?.clientId));
                 return (
                   <tr key={payment.id} className="border-t border-slate-100">
                     <td className="px-4 py-3">{formatDate(payment.paidAt)}</td>

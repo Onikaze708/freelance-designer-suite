@@ -1,6 +1,7 @@
-﻿import { localApi, readLocalStore, syncLocalClients, syncLocalQuotes, syncLocalSettings } from "./utils/localStore";
+﻿import { localApi, readLocalStore, syncLocalClients, syncLocalInvoices, syncLocalPayments, syncLocalQuotes, syncLocalSettings } from "./utils/localStore";
 import { createRemoteClient, deleteRemoteClient, loadRemoteClients, updateRemoteClient } from "./utils/clientsRemote";
 import { createRemoteQuote, deleteRemoteQuote, loadRemoteQuotes, migrateLocalQuotesToRemote, updateRemoteQuote } from "./utils/quotesRemote";
+import { createRemoteInvoice, loadRemoteInvoices, loadRemotePayments, migrateLocalInvoicesToRemote, migrateLocalPaymentsToRemote, updateRemoteInvoice } from "./utils/invoicesPaymentsRemote";
 import { loadRemoteStudioSettings, saveRemoteStudioSettings } from "./utils/studioSettingsRemote";
 import { hasSupabaseConfig, supabase } from "./utils/supabaseClient";
 
@@ -172,6 +173,47 @@ async function hydrateQuotes(appData) {
   }
 }
 
+async function hydrateInvoicesAndPayments(appData, originalLocalData) {
+  if (!hasSupabaseConfig || !supabase) {
+    return appData;
+  }
+
+  try {
+    let remoteInvoices = await loadRemoteInvoices();
+    const localInvoices = Array.isArray(originalLocalData?.invoices) ? originalLocalData.invoices : [];
+
+    if ((!remoteInvoices || remoteInvoices.length === 0) && localInvoices.length > 0) {
+      remoteInvoices = await migrateLocalInvoicesToRemote(localInvoices, {
+        localQuotes: Array.isArray(originalLocalData?.quotes) ? originalLocalData.quotes : [],
+        remoteQuotes: appData.quotes,
+        remoteClients: appData.clients
+      });
+    }
+
+    const syncedInvoices = syncLocalInvoices(Array.isArray(remoteInvoices) ? remoteInvoices : []);
+
+    let remotePayments = await loadRemotePayments();
+    const localPayments = Array.isArray(originalLocalData?.payments) ? originalLocalData.payments : [];
+
+    if ((!remotePayments || remotePayments.length === 0) && localPayments.length > 0) {
+      remotePayments = await migrateLocalPaymentsToRemote(localPayments, {
+        localInvoices,
+        remoteInvoices: syncedInvoices
+      });
+    }
+
+    const syncedPayments = syncLocalPayments(Array.isArray(remotePayments) ? remotePayments : []);
+
+    return {
+      ...appData,
+      invoices: syncedInvoices,
+      payments: syncedPayments
+    };
+  } catch (_error) {
+    return appData;
+  }
+}
+
 export async function signInWithPassword({ email, password }) {
   if (!hasSupabaseConfig || !supabase) {
     throw new Error("Supabase Auth no está configurado.");
@@ -226,7 +268,8 @@ export const api = {
     const baseData = await runWithFallback(() => request("/bootstrap"), () => localApi.bootstrap());
     const withSettings = await hydrateStudioSettings(baseData);
     const withClients = await hydrateClients(withSettings);
-    return hydrateQuotes(withClients);
+    const withQuotes = await hydrateQuotes(withClients);
+    return hydrateInvoicesAndPayments(withQuotes, baseData);
   },
   createClient: async (payload) => {
     if (hasSupabaseConfig && supabase) {
@@ -336,7 +379,24 @@ export const api = {
         const remoteQuote = await updateRemoteQuote(id, { ...currentQuote, status: "approved" });
         syncLocalQuotes(current.quotes.map((quote) => (quote.id === id ? remoteQuote : quote)));
         setQuotesDataSource("Supabase");
-        return localApi.convertQuoteToInvoice(id, payload);
+        const remoteInvoice = await createRemoteInvoice({
+          quoteId: currentQuote.id,
+          clientId: currentQuote.clientId,
+          clientSnapshot: currentQuote.clientSnapshot,
+          issueDate: new Date().toISOString().slice(0, 10),
+          dueDate: payload?.dueDate || currentQuote.date,
+          items: currentQuote.items,
+          totals: currentQuote.totals,
+          notes: currentQuote.notes,
+          paymentTerms: currentQuote.paymentTerms,
+          paymentMethod: "PayPal",
+          paypalLink: payload?.paypalLink || current.settings?.paypalLink || "",
+          status: "draft"
+        });
+        const currentInvoices = readLocalStore().invoices;
+        syncLocalInvoices([remoteInvoice, ...currentInvoices.filter((invoice) => invoice.id !== remoteInvoice.id)]);
+        setQuotesDataSource("Supabase");
+        return remoteInvoice;
       } catch (_error) {
         setQuotesDataSource("LocalStorage Fallback");
         return localApi.convertQuoteToInvoice(id, payload);
@@ -346,11 +406,29 @@ export const api = {
     setQuotesDataSource("LocalStorage Fallback");
     return localApi.convertQuoteToInvoice(id, payload);
   },
-  updateInvoice: (id, payload) =>
-    runWithFallback(
-      () => request(`/invoices/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
-      () => localApi.updateInvoice(id, payload)
-    ),
+  updateInvoice: async (id, payload) => {
+    if (hasSupabaseConfig && supabase) {
+      try {
+        const current = readLocalStore();
+        const currentInvoice = current.invoices.find((invoice) => invoice.id === id);
+        if (!currentInvoice) {
+          throw new Error("Factura no encontrada");
+        }
+
+        const result = await updateRemoteInvoice(id, { ...currentInvoice, ...payload });
+        const nextInvoices = current.invoices.map((invoice) => (invoice.id === id ? result.invoice : invoice));
+        syncLocalInvoices(nextInvoices);
+        if (result.payment) {
+          syncLocalPayments([result.payment, ...current.payments.filter((payment) => payment.id !== result.payment.id)]);
+        }
+        return result.invoice;
+      } catch (_error) {
+        return localApi.updateInvoice(id, payload);
+      }
+    }
+
+    return localApi.updateInvoice(id, payload);
+  },
   updateSettings: async (payload) => {
     const localSettings = await localApi.updateSettings(payload);
 

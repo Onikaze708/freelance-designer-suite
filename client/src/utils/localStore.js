@@ -214,6 +214,18 @@ export function syncLocalQuotes(nextQuotes) {
   return writeLocalStore(current).quotes;
 }
 
+export function syncLocalInvoices(nextInvoices) {
+  const current = readLocalStore();
+  current.invoices = Array.isArray(nextInvoices) ? clone(nextInvoices) : current.invoices;
+  return writeLocalStore(current).invoices;
+}
+
+export function syncLocalPayments(nextPayments) {
+  const current = readLocalStore();
+  current.payments = Array.isArray(nextPayments) ? clone(nextPayments) : current.payments;
+  return writeLocalStore(current).payments;
+}
+
 function updateLocalStore(mutator) {
   const current = readLocalStore();
   const nextStore = mutator(current);
