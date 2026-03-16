@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { api, getClientsDataSource, getCurrentSession, getStudioSettingsSource, hasSupabaseConfig, signInWithPassword, signOut, subscribeToAuthChanges } from "./api";
 import { Layout } from "./components/Layout";
 import { StatCard } from "./components/StatCard";
@@ -30,56 +30,183 @@ function sumTotals(items) {
   return items.reduce((sum, item) => sum + Number(item.totals?.total || 0), 0);
 }
 
+function isSameMonth(value, referenceDate = new Date()) {
+  if (!value) return false;
+  const date = new Date(value);
+  return date.getMonth() === referenceDate.getMonth() && date.getFullYear() === referenceDate.getFullYear();
+}
+
+function normalizeAmount(value) {
+  const amount = Number(value || 0);
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+function buildRecentActivity(data) {
+  const quoteItems = data.quotes.map((quote) => ({
+    id: `quote-${quote.id}` ,
+    type: "Cotización",
+    title: quote.quoteNumber || "Cotización",
+    subtitle: quote.clientSnapshot?.businessName || quote.clientSnapshot?.name || quote.clientName || "Sin cliente",
+    amount: normalizeAmount(quote.totals?.total),
+    date: quote.updatedAt || quote.createdAt || quote.date
+  }));
+
+  const invoiceItems = data.invoices.map((invoice) => ({
+    id: `invoice-${invoice.id}` ,
+    type: "Factura",
+    title: invoice.invoiceNumber || "Factura",
+    subtitle: invoice.clientSnapshot?.businessName || invoice.clientSnapshot?.name || "Sin cliente",
+    amount: normalizeAmount(invoice.totals?.total),
+    date: invoice.updatedAt || invoice.issueDate || invoice.createdAt
+  }));
+
+  const paymentItems = data.payments.map((payment) => ({
+    id: `payment-${payment.id}` ,
+    type: "Pago",
+    title: payment.method || "Pago registrado",
+    subtitle: payment.status || "completed",
+    amount: normalizeAmount(payment.amount),
+    date: payment.paidAt || payment.createdAt
+  }));
+
+  return [...quoteItems, ...invoiceItems, ...paymentItems]
+    .filter((item) => item.date)
+    .sort((left, right) => new Date(right.date) - new Date(left.date))
+    .slice(0, 8);
+}
+
 function Dashboard({ data }) {
-  const paidInvoices = data.invoices.filter((invoice) => invoice.status === "paid");
-  const pendingInvoices = data.invoices.filter((invoice) => ["draft", "sent", "pending"].includes(invoice.status));
+  const dashboardMetrics = useMemo(() => {
+    const now = new Date();
+    const quotesThisMonth = data.quotes.filter((quote) => isSameMonth(quote.date || quote.createdAt, now));
+    const invoicesThisMonth = data.invoices.filter((invoice) => isSameMonth(invoice.issueDate || invoice.createdAt, now));
+    const newClientsThisMonth = data.clients.filter((client) => isSameMonth(client.createdAt || client.updatedAt, now));
+    const approvedQuotes = data.quotes.filter((quote) => quote.status === "approved");
+    const totalQuotedThisMonth = quotesThisMonth.reduce((sum, quote) => sum + normalizeAmount(quote.totals?.total), 0);
+    const totalInvoicedThisMonth = invoicesThisMonth.reduce((sum, invoice) => sum + normalizeAmount(invoice.totals?.total), 0);
+    const pendingToCollect = data.invoices
+      .filter((invoice) => !["paid", "completed"].includes(invoice.status))
+      .reduce((sum, invoice) => sum + normalizeAmount(invoice.totals?.total), 0);
+    const approvalRate = data.quotes.length > 0 ? approvedQuotes.length / data.quotes.length : 0;
+    const averageQuoteValue = data.quotes.length > 0 ? sumTotals(data.quotes) / data.quotes.length : 0;
+    const topQuotedServices = Object.values(
+      data.quotes.reduce((accumulator, quote) => {
+        quote.items?.forEach((item) => {
+          const key = item.serviceName || "Servicio sin nombre";
+          if (!accumulator[key]) {
+            accumulator[key] = { name: key, count: 0, total: 0 };
+          }
+          accumulator[key].count += Number(item.quantity || 1);
+          accumulator[key].total += normalizeAmount(item.total);
+        });
+        return accumulator;
+      }, {})
+    )
+      .sort((left, right) => right.count - left.count || right.total - left.total)
+      .slice(0, 5);
+
+    return {
+      totalQuotedThisMonth,
+      totalInvoicedThisMonth,
+      pendingToCollect,
+      newClientsThisMonth: newClientsThisMonth.length,
+      quotesCreatedThisMonth: quotesThisMonth.length,
+      approvedQuotes: approvedQuotes.length,
+      approvalRate,
+      averageQuoteValue,
+      topQuotedServices,
+      recentActivity: buildRecentActivity(data)
+    };
+  }, [data]);
 
   return (
     <div className="space-y-4">
       <SectionHeader
         eyebrow="Resumen"
         title="Tu estudio en orden"
-        description="Consulta rápidamente cotizaciones, facturas y el estado de cobro sin perder tiempo en hojas sueltas."
+        description="Consulta rápidamente cotizaciones, facturas, pagos y clientes desde un panel claro para operación diaria."
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Clientes" value={String(data.clients.length)} hint="Base reutilizable para futuras propuestas." />
-        <StatCard label="Servicios" value={String(data.services.length)} hint="Catálogo profesional y editable." />
         <StatCard
-          label="Cotizado"
-          value={formatCurrency(sumTotals(data.quotes), data.settings.currency)}
-          hint="Total acumulado en cotizaciones."
+          label="Cotizado este mes"
+          value={formatCurrency(dashboardMetrics.totalQuotedThisMonth, data.settings.currency)}
+          hint={`${dashboardMetrics.quotesCreatedThisMonth} cotizaciones creadas este mes.`}
         />
         <StatCard
-          label="Facturado"
-          value={formatCurrency(sumTotals(data.invoices), data.settings.currency)}
-          hint={`${paidInvoices.length} pagadas · ${pendingInvoices.length} pendientes`}
+          label="Facturado este mes"
+          value={formatCurrency(dashboardMetrics.totalInvoicedThisMonth, data.settings.currency)}
+          hint="Solo facturas emitidas en el mes actual."
+        />
+        <StatCard
+          label="Pendiente por cobrar"
+          value={formatCurrency(dashboardMetrics.pendingToCollect, data.settings.currency)}
+          hint="Facturas aún no marcadas como pagadas."
+        />
+        <StatCard
+          label="Clientes nuevos"
+          value={String(dashboardMetrics.newClientsThisMonth)}
+          hint="Altas creadas durante el mes actual."
+        />
+        <StatCard
+          label="Cotizaciones del mes"
+          value={String(dashboardMetrics.quotesCreatedThisMonth)}
+          hint="Nuevas propuestas emitidas este mes."
+        />
+        <StatCard
+          label="Cotizaciones aprobadas"
+          value={String(dashboardMetrics.approvedQuotes)}
+          hint="Propuestas con estado aprobado."
+        />
+        <StatCard
+          label="Tasa de aprobación"
+          value={`${Math.round(dashboardMetrics.approvalRate * 100)}%`}
+          hint="Aprobadas / total de cotizaciones."
+        />
+        <StatCard
+          label="Valor promedio"
+          value={formatCurrency(dashboardMetrics.averageQuoteValue, data.settings.currency)}
+          hint="Promedio por cotización guardada."
         />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-3">
+        <div className="panel p-6">
+          <h3 className="text-xl font-semibold text-ink">Servicios más cotizados</h3>
+          <div className="mt-4 space-y-3">
+            {dashboardMetrics.topQuotedServices.map((service) => (
+              <div key={service.name} className="rounded-2xl border border-slate-100 px-4 py-3 text-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="font-semibold text-ink">{service.name}</span>
+                  <span className="text-slate-500">{service.count} usos</span>
+                </div>
+                <p className="mt-1 text-slate-500">Total cotizado: {formatCurrency(service.total, data.settings.currency)}</p>
+              </div>
+            ))}
+            {dashboardMetrics.topQuotedServices.length === 0 ? <p className="text-sm text-slate-500">Aún no hay suficientes cotizaciones para detectar servicios destacados.</p> : null}
+          </div>
+        </div>
+
         <div className="panel p-6">
           <h3 className="text-xl font-semibold text-ink">Actividad reciente</h3>
           <div className="mt-4 space-y-3">
-            {data.quotes.slice(0, 5).map((quote) => (
-              <div key={quote.id} className="rounded-2xl border border-slate-100 px-4 py-3 text-sm">
+            {dashboardMetrics.recentActivity.map((activity) => (
+              <div key={activity.id} className="rounded-2xl border border-slate-100 px-4 py-3 text-sm">
                 <div className="flex items-center justify-between gap-4">
-                  <span className="font-semibold text-ink">{quote.quoteNumber}</span>
-                  <span className="text-slate-500">{formatCurrency(quote.totals.total, data.settings.currency)}</span>
+                  <span className="font-semibold text-ink">{activity.title}</span>
+                  <span className="text-slate-500">{formatCurrency(activity.amount, data.settings.currency)}</span>
                 </div>
-                <p className="mt-1 text-slate-500">
-                  {quote.clientSnapshot?.businessName || quote.clientSnapshot?.name} · {formatDate(quote.date)}
-                </p>
+                <p className="mt-1 text-slate-500">{activity.type} · {activity.subtitle} · {formatDate(activity.date)}</p>
               </div>
             ))}
-            {data.quotes.length === 0 ? <p className="text-sm text-slate-500">Aún no hay cotizaciones guardadas.</p> : null}
+            {dashboardMetrics.recentActivity.length === 0 ? <p className="text-sm text-slate-500">Aún no hay actividad reciente registrada.</p> : null}
           </div>
         </div>
 
         <div className="panel p-6">
           <h3 className="text-xl font-semibold text-ink">Seguimiento por cliente</h3>
           <div className="mt-4 space-y-3">
-            {data.clients.map((client) => {
+            {data.clients.slice(0, 6).map((client) => {
               const clientInvoices = data.invoices.filter((invoice) => invoice.clientId === client.id);
               const total = clientInvoices.reduce((sum, invoice) => sum + Number(invoice.totals.total || 0), 0);
               const latest = clientInvoices[0]?.issueDate || client.updatedAt;
@@ -94,6 +221,7 @@ function Dashboard({ data }) {
                 </div>
               );
             })}
+            {data.clients.length === 0 ? <p className="text-sm text-slate-500">Todavía no hay clientes registrados.</p> : null}
           </div>
         </div>
       </div>
@@ -173,7 +301,7 @@ function ClientsSection({ clients, onSaveClient, onDeleteClient, dataSource }) {
               {clients.length === 0 ? (
                 <tr className="border-t border-slate-100">
                   <td className="px-4 py-6 text-center text-sm text-slate-500" colSpan={5}>
-                    A?n no hay clientes guardados. Puedes crear uno desde el formulario superior.
+                    Aún no hay clientes guardados. Puedes crear uno desde el formulario superior.
                   </td>
                 </tr>
               ) : null}
