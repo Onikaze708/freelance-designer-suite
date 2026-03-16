@@ -74,7 +74,7 @@ La configuración actual de Vite ya queda preparada para publicar la app en:
 Valor configurado de base path:
 
 - `APP_BASE_PATH=/studio/`
-- valor por defecto actual: `/studio/`
+- valor por defecto actual: `/`
 
 Si alguna vez quieres publicarla en otra subcarpeta, por ejemplo `/app`, puedes generar el build así:
 

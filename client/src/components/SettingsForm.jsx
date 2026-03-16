@@ -33,7 +33,7 @@
       <div><label className="label">Moneda</label><input name="currency" className="input" defaultValue={settings.currency} /></div>
       <div className="md:col-span-2"><label className="label">Logo URL opcional</label><input name="logoUrl" className="input" defaultValue={settings.logoUrl} /></div>
       <div><label className="label">Impuestos %</label><input name="taxPercentage" type="number" step="0.01" className="input" defaultValue={settings.taxPercentage} /></div>
-      <div><label className="label">PayPal general</label><input name="paypalLink" className="input" defaultValue={settings.paypalLink} /></div>
+      <div><label className="label">Enlace PayPal / PayPal.Me</label><input name="paypalLink" className="input" defaultValue={settings.paypalLink} placeholder="https://www.paypal.me/martialsciencemag" /></div>
       <div><label className="label">Revisión incluida</label><input name="includedRevisions" type="number" min="0" className="input" defaultValue={settings.revisionSettings.includedRevisions} /></div>
       <div><label className="label">Costo revisión extra</label><input name="extraRevisionCost" type="number" step="0.01" className="input" defaultValue={settings.revisionSettings.extraRevisionCost} /></div>
       <div><label className="label">Complejidad media</label><input name="complexityMedium" type="number" step="0.01" className="input" defaultValue={settings.complexityRates.medium} /></div>
@@ -53,3 +53,4 @@
     </form>
   );
 }
+

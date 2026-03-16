@@ -1,7 +1,16 @@
-﻿import { defineConfig } from "vite";
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-const basePath = process.env.APP_BASE_PATH || "/studio/";
+function normalizeBasePath(value) {
+  if (!value || value === "/") {
+    return "/";
+  }
+
+  const withLeadingSlash = value.startsWith("/") ? value : `/${value}`;
+  return withLeadingSlash.endsWith("/") ? withLeadingSlash : `${withLeadingSlash}/`;
+}
+
+const basePath = normalizeBasePath(process.env.APP_BASE_PATH || "/");
 
 export default defineConfig({
   base: basePath,

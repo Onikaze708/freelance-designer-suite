@@ -1,12 +1,13 @@
-﻿export const CATEGORY_OPTIONS = [
+export const CATEGORY_OPTIONS = [
   "Identidad visual",
   "Redes sociales",
   "Publicidad y marketing",
   "Diseño editorial",
   "Diseño web",
-  "Diseño corporativo"
+  "Diseño corporativo",
+  "Photography",
+  "Monthly Creative Plans"
 ];
-
 export const SERVICE_OPTION_LABELS = {
   cantidad: "Cantidad",
   complejidad: "Complejidad",
@@ -115,3 +116,4 @@ export function createEmptyQuoteItem(service) {
     includesStrategy: false
   };
 }
+

@@ -10,7 +10,8 @@ import { PaymentQrCard } from "./components/PaymentQrCard";
 import { SettingsForm } from "./components/SettingsForm";
 import { EditorialQuoteCalculator } from "./components/EditorialQuoteCalculator";
 import { ProductionCalculator } from "./components/ProductionCalculator";
-import { exportInvoicePdf, exportQuotePdf } from "./utils/pdf";
+import { exportQuotePdf } from "./utils/pdf";
+import { createInvoiceEmailLink, exportInvoicePdf } from "./utils/invoicePdf";
 import {
   formatCurrency,
   getServiceBasePrice,
@@ -308,6 +309,10 @@ function InvoicesSection({ data, onUpdateInvoice }) {
   const [selectedInvoiceId, setSelectedInvoiceId] = useState(data.invoices[0]?.id || "");
   const selectedInvoice = data.invoices.find((invoice) => invoice.id === selectedInvoiceId) || data.invoices[0];
 
+  function openInvoiceEmailDraft(invoice) {
+    window.location.href = createInvoiceEmailLink(invoice, data.settings);
+  }
+
   useEffect(() => {
     if (!selectedInvoiceId && data.invoices[0]?.id) {
       setSelectedInvoiceId(data.invoices[0].id);
@@ -406,7 +411,10 @@ function InvoicesSection({ data, onUpdateInvoice }) {
                   Guardar factura
                 </button>
                 <button className="button-secondary" type="button" onClick={() => exportInvoicePdf(selectedInvoice, data.settings)}>
-                  Descargar PDF
+                  Descargar factura PDF
+                </button>
+                <button className="button-secondary" type="button" onClick={() => openInvoiceEmailDraft(selectedInvoice)}>
+                  Preparar email
                 </button>
               </div>
             </form>
@@ -586,3 +594,7 @@ export default function App() {
     </Layout>
   );
 }
+
+
+
+
