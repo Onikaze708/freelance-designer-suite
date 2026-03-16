@@ -103,6 +103,7 @@ function Dashboard({ data }) {
 
 function ClientsSection({ clients, onSaveClient, onDeleteClient, dataSource }) {
   const [editingClient, setEditingClient] = useState(null);
+  const [draftResetToken, setDraftResetToken] = useState(0);
 
   return (
     <div className="space-y-4">
@@ -119,9 +120,13 @@ function ClientsSection({ clients, onSaveClient, onDeleteClient, dataSource }) {
 
       <ClientForm
         editingClient={editingClient}
+        draftResetToken={draftResetToken}
         onCancel={() => setEditingClient(null)}
-        onSubmit={(payload) => {
-          onSaveClient(editingClient, payload);
+        onSubmit={async (payload) => {
+          await onSaveClient(editingClient, payload);
+          if (!editingClient) {
+            setDraftResetToken(Date.now());
+          }
           setEditingClient(null);
         }}
       />
@@ -698,6 +703,7 @@ export default function App() {
     </Layout>
   );
 }
+
 
 
 
