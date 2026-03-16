@@ -283,6 +283,13 @@ export const localApi = {
     });
     return Promise.resolve(saved.clients.find((item) => item.id === id));
   },
+  deleteClient(id) {
+    const saved = updateLocalStore((store) => {
+      store.clients = store.clients.filter((client) => client.id !== id);
+      return store;
+    });
+    return Promise.resolve({ ok: true, clients: saved.clients });
+  },
   createService(payload) {
     const saved = updateLocalStore((store) => {
       store.services.unshift(normalizeServiceRecord(payload, createId("service"), 0));
@@ -391,4 +398,5 @@ export const localApi = {
     return Promise.resolve(saved.settings);
   }
 };
+
 

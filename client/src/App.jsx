@@ -101,7 +101,7 @@ function Dashboard({ data }) {
   );
 }
 
-function ClientsSection({ clients, onSaveClient, dataSource }) {
+function ClientsSection({ clients, onSaveClient, onDeleteClient, dataSource }) {
   const [editingClient, setEditingClient] = useState(null);
 
   return (
@@ -146,9 +146,7 @@ function ClientsSection({ clients, onSaveClient, dataSource }) {
                   <td className="px-4 py-3">{client.email}</td>
                   <td className="px-4 py-3">{client.phone}</td>
                   <td className="px-4 py-3">
-                    <button className="button-secondary" type="button" onClick={() => setEditingClient(client)}>
-                      Editar
-                    </button>
+                    <div className="flex flex-wrap gap-2"><button className="button-secondary" type="button" onClick={() => setEditingClient(client)}>Editar</button><button className="button-secondary" type="button" onClick={() => onDeleteClient(client.id)}>Eliminar</button></div>
                   </td>
                 </tr>
               ))}
@@ -568,6 +566,11 @@ export default function App() {
     await loadApp();
   }
 
+  async function handleDeleteClient(id) {
+    await api.deleteClient(id);
+    await loadApp();
+  }
+
   async function handleSaveService(editingService, payload) {
     await (editingService ? api.updateService(editingService.id, payload) : api.createService(payload));
     await loadApp();
@@ -650,7 +653,7 @@ export default function App() {
       {data.settings ? (
         <>
           {activeSection === "dashboard" ? <Dashboard data={data} /> : null}
-          {activeSection === "clients" ? <ClientsSection clients={data.clients} onSaveClient={handleSaveClient} dataSource={clientsSource} /> : null}
+          {activeSection === "clients" ? <ClientsSection clients={data.clients} onSaveClient={handleSaveClient} onDeleteClient={handleDeleteClient} dataSource={clientsSource} /> : null}
           {activeSection === "services" ? (
             <ServicesSection services={data.services} onSaveService={handleSaveService} onDeleteService={handleDeleteService} />
           ) : null}
@@ -695,6 +698,7 @@ export default function App() {
     </Layout>
   );
 }
+
 
 
 

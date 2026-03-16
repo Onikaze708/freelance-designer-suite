@@ -21,8 +21,18 @@ function normalizeRemoteClient(row) {
   };
 }
 
-function buildRemoteClientPayload(client) {
+async function getAuthenticatedUserId() {
+  const { data, error } = await supabase.auth.getUser();
+  if (error) {
+    throw new Error(error.message || "No se pudo obtener el usuario autenticado");
+  }
+
+  return data.user?.id || null;
+}
+
+function buildRemoteClientPayload(client, userId) {
   return {
+    ...(userId ? { user_id: userId } : {}),
     name: client.name || "",
     company: client.businessName || client.company || "",
     email: client.email || "",
@@ -52,9 +62,14 @@ export async function createRemoteClient(payload) {
     return null;
   }
 
+  const userId = await getAuthenticatedUserId();
+  if (!userId) {
+    throw new Error("No hay una sesión autenticada para crear clientes");
+  }
+
   const { data, error } = await supabase
     .from("clients")
-    .insert(buildRemoteClientPayload(payload))
+    .insert(buildRemoteClientPayload(payload, userId))
     .select()
     .single();
 

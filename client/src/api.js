@@ -1,5 +1,5 @@
 ﻿import { localApi, syncLocalClients, syncLocalSettings } from "./utils/localStore";
-import { createRemoteClient, loadRemoteClients, updateRemoteClient } from "./utils/clientsRemote";
+import { createRemoteClient, deleteRemoteClient, loadRemoteClients, updateRemoteClient } from "./utils/clientsRemote";
 import { loadRemoteStudioSettings, saveRemoteStudioSettings } from "./utils/studioSettingsRemote";
 import { hasSupabaseConfig, supabase } from "./utils/supabaseClient";
 
@@ -214,6 +214,20 @@ export const api = {
     setClientsDataSource("LocalStorage Fallback");
     return localApi.updateClient(id, payload);
   },
+  deleteClient: async (id) => {
+    try {
+      const remoteResult = await deleteRemoteClient(id);
+      if (remoteResult?.ok) {
+        setClientsDataSource("Supabase");
+        return remoteResult;
+      }
+    } catch (_error) {
+      // Fall back to local storage below.
+    }
+
+    setClientsDataSource("LocalStorage Fallback");
+    return localApi.deleteClient(id);
+  },
   createService: (payload) =>
     runWithFallback(
       () => request("/services", { method: "POST", body: JSON.stringify(payload) }),
@@ -270,3 +284,5 @@ export const api = {
     return localSettings;
   }
 };
+
+
