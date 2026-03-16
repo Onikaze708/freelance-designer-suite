@@ -187,42 +187,30 @@ export const api = {
     return hydrateClients(withSettings);
   },
   createClient: async (payload) => {
-    try {
+    if (hasSupabaseConfig && supabase) {
       const remoteClient = await createRemoteClient(payload);
-      if (remoteClient) {
-        setClientsDataSource("Supabase");
-        return remoteClient;
-      }
-    } catch (_error) {
-      // Fall back to local storage below.
+      setClientsDataSource("Supabase");
+      return remoteClient;
     }
 
     setClientsDataSource("LocalStorage Fallback");
     return localApi.createClient(payload);
   },
   updateClient: async (id, payload) => {
-    try {
+    if (hasSupabaseConfig && supabase) {
       const remoteClient = await updateRemoteClient(id, payload);
-      if (remoteClient) {
-        setClientsDataSource("Supabase");
-        return remoteClient;
-      }
-    } catch (_error) {
-      // Fall back to local storage below.
+      setClientsDataSource("Supabase");
+      return remoteClient;
     }
 
     setClientsDataSource("LocalStorage Fallback");
     return localApi.updateClient(id, payload);
   },
   deleteClient: async (id) => {
-    try {
+    if (hasSupabaseConfig && supabase) {
       const remoteResult = await deleteRemoteClient(id);
-      if (remoteResult?.ok) {
-        setClientsDataSource("Supabase");
-        return remoteResult;
-      }
-    } catch (_error) {
-      // Fall back to local storage below.
+      setClientsDataSource("Supabase");
+      return remoteResult;
     }
 
     setClientsDataSource("LocalStorage Fallback");
@@ -284,5 +272,6 @@ export const api = {
     return localSettings;
   }
 };
+
 
 

@@ -39,7 +39,6 @@ function buildRemoteClientPayload(client, userId) {
     phone: client.phone || "",
     address: client.address || "",
     notes: client.notes || "",
-    work_history: client.workHistory || "",
     updated_at: new Date().toISOString()
   };
 }
@@ -62,8 +61,11 @@ export async function createRemoteClient(payload) {
     return null;
   }
 
+  console.log("CLIENT SAVE START");
+
   const userId = await getAuthenticatedUserId();
   if (!userId) {
+    console.log("CLIENT SAVE FAILED");
     throw new Error("No hay una sesión autenticada para crear clientes");
   }
 
@@ -74,9 +76,11 @@ export async function createRemoteClient(payload) {
     .single();
 
   if (error) {
+    console.log("CLIENT SAVE FAILED", error);
     throw new Error(error.message || "No se pudo crear el cliente en Supabase");
   }
 
+  console.log("CLIENT SAVE SUCCESS");
   return normalizeRemoteClient(data);
 }
 

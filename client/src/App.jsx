@@ -104,6 +104,7 @@ function Dashboard({ data }) {
 function ClientsSection({ clients, onSaveClient, onDeleteClient, dataSource }) {
   const [editingClient, setEditingClient] = useState(null);
   const [draftResetToken, setDraftResetToken] = useState(0);
+  const [clientError, setClientError] = useState("");
 
   return (
     <div className="space-y-4">
@@ -118,16 +119,26 @@ function ClientsSection({ clients, onSaveClient, onDeleteClient, dataSource }) {
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${dataSource === "Supabase" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{dataSource}</span>
       </div>
 
+      {clientError ? <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">{clientError}</div> : null}
+
       <ClientForm
         editingClient={editingClient}
         draftResetToken={draftResetToken}
-        onCancel={() => setEditingClient(null)}
-        onSubmit={async (payload) => {
-          await onSaveClient(editingClient, payload);
-          if (!editingClient) {
-            setDraftResetToken(Date.now());
-          }
+        onCancel={() => {
+          setClientError("");
           setEditingClient(null);
+        }}
+        onSubmit={async (payload) => {
+          try {
+            setClientError("");
+            await onSaveClient(editingClient, payload);
+            if (!editingClient) {
+              setDraftResetToken(Date.now());
+            }
+            setEditingClient(null);
+          } catch (error) {
+            setClientError(error.message || "No se pudo guardar el cliente.");
+          }
         }}
       />
 
@@ -703,6 +714,7 @@ export default function App() {
     </Layout>
   );
 }
+
 
 
 
