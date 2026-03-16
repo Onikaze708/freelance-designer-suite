@@ -1,5 +1,14 @@
 ﻿import { hasSupabaseConfig, supabase } from "./supabaseClient";
 
+let invoicesTableAvailable = true;
+let paymentsTableAvailable = true;
+
+function isMissingTableError(error) {
+  const message = String(error?.message || error?.details || "").toLowerCase();
+  const code = String(error?.code || error?.status || "").toLowerCase();
+  return code === "404" || message.includes("relation") || message.includes("does not exist") || message.includes("could not find the table") || message.includes("not found");
+}
+
 function normalizeNumber(value) {
   const next = Number(value ?? 0);
   return Number.isFinite(next) ? next : 0;
@@ -145,12 +154,16 @@ function createPaymentFromInvoice(invoice) {
 }
 
 export async function loadRemoteInvoices() {
-  if (!hasSupabaseConfig || !supabase) {
+  if (!hasSupabaseConfig || !supabase || !invoicesTableAvailable) {
     return null;
   }
 
   const { data, error } = await supabase.from("invoices").select("*").order("updated_at", { ascending: false });
   if (error) {
+    if (isMissingTableError(error)) {
+      invoicesTableAvailable = false;
+      return null;
+    }
     throw new Error(error.message || "No se pudieron cargar las facturas desde Supabase");
   }
 
@@ -158,12 +171,16 @@ export async function loadRemoteInvoices() {
 }
 
 export async function loadRemotePayments() {
-  if (!hasSupabaseConfig || !supabase) {
+  if (!hasSupabaseConfig || !supabase || !paymentsTableAvailable) {
     return null;
   }
 
   const { data, error } = await supabase.from("payments").select("*").order("date", { ascending: false });
   if (error) {
+    if (isMissingTableError(error)) {
+      paymentsTableAvailable = false;
+      return null;
+    }
     throw new Error(error.message || "No se pudieron cargar los pagos desde Supabase");
   }
 
@@ -171,7 +188,7 @@ export async function loadRemotePayments() {
 }
 
 export async function createRemoteInvoice(payload) {
-  if (!hasSupabaseConfig || !supabase) {
+  if (!hasSupabaseConfig || !supabase || !invoicesTableAvailable) {
     return null;
   }
 
@@ -195,7 +212,7 @@ export async function createRemoteInvoice(payload) {
 }
 
 export async function updateRemoteInvoice(id, payload) {
-  if (!hasSupabaseConfig || !supabase) {
+  if (!hasSupabaseConfig || !supabase || !invoicesTableAvailable) {
     return null;
   }
 
@@ -244,7 +261,7 @@ export async function updateRemoteInvoice(id, payload) {
 }
 
 export async function deleteRemoteInvoice(id) {
-  if (!hasSupabaseConfig || !supabase) {
+  if (!hasSupabaseConfig || !supabase || !invoicesTableAvailable) {
     return null;
   }
 
@@ -257,7 +274,7 @@ export async function deleteRemoteInvoice(id) {
 }
 
 export async function createRemotePayment(payload) {
-  if (!hasSupabaseConfig || !supabase) {
+  if (!hasSupabaseConfig || !supabase || !paymentsTableAvailable) {
     return null;
   }
 
@@ -280,7 +297,7 @@ export async function createRemotePayment(payload) {
 }
 
 export async function migrateLocalInvoicesToRemote(localInvoices, references = {}) {
-  if (!hasSupabaseConfig || !supabase || !Array.isArray(localInvoices) || localInvoices.length === 0) {
+  if (!hasSupabaseConfig || !supabase || !invoicesTableAvailable || !Array.isArray(localInvoices) || localInvoices.length === 0) {
     return [];
   }
 
@@ -320,7 +337,7 @@ export async function migrateLocalInvoicesToRemote(localInvoices, references = {
 }
 
 export async function migrateLocalPaymentsToRemote(localPayments, references = {}) {
-  if (!hasSupabaseConfig || !supabase || !Array.isArray(localPayments) || localPayments.length === 0) {
+  if (!hasSupabaseConfig || !supabase || !paymentsTableAvailable || !Array.isArray(localPayments) || localPayments.length === 0) {
     return [];
   }
 

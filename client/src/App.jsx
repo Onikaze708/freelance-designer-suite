@@ -43,7 +43,7 @@ function normalizeAmount(value) {
 
 function buildRecentActivity(data) {
   const quoteItems = data.quotes.map((quote) => ({
-    id: `quote-${quote.id}` ,
+    id: `quote-${quote.id}`,
     type: "Cotización",
     title: quote.quoteNumber || "Cotización",
     subtitle: quote.clientSnapshot?.businessName || quote.clientSnapshot?.name || quote.clientName || "Sin cliente",
@@ -52,7 +52,7 @@ function buildRecentActivity(data) {
   }));
 
   const invoiceItems = data.invoices.map((invoice) => ({
-    id: `invoice-${invoice.id}` ,
+    id: `invoice-${invoice.id}`,
     type: "Factura",
     title: invoice.invoiceNumber || "Factura",
     subtitle: invoice.clientSnapshot?.businessName || invoice.clientSnapshot?.name || "Sin cliente",
@@ -61,7 +61,7 @@ function buildRecentActivity(data) {
   }));
 
   const paymentItems = data.payments.map((payment) => ({
-    id: `payment-${payment.id}` ,
+    id: `payment-${payment.id}`,
     type: "Pago",
     title: payment.method || "Pago registrado",
     subtitle: payment.status || "completed",
@@ -75,122 +75,94 @@ function buildRecentActivity(data) {
     .slice(0, 8);
 }
 
-function Dashboard({ data }) {
-  const dashboardMetrics = useMemo(() => {
-    const now = new Date();
-    const quotesThisMonth = data.quotes.filter((quote) => isSameMonth(quote.date || quote.createdAt, now));
-    const invoicesThisMonth = data.invoices.filter((invoice) => isSameMonth(invoice.issueDate || invoice.createdAt, now));
-    const newClientsThisMonth = data.clients.filter((client) => isSameMonth(client.createdAt || client.updatedAt, now));
-    const approvedQuotes = data.quotes.filter((quote) => quote.status === "approved");
-    const totalQuotedThisMonth = quotesThisMonth.reduce((sum, quote) => sum + normalizeAmount(quote.totals?.total), 0);
-    const totalInvoicedThisMonth = invoicesThisMonth.reduce((sum, invoice) => sum + normalizeAmount(invoice.totals?.total), 0);
-    const pendingToCollect = data.invoices
-      .filter((invoice) => !["paid", "completed"].includes(invoice.status))
-      .reduce((sum, invoice) => sum + normalizeAmount(invoice.totals?.total), 0);
-    const approvalRate = data.quotes.length > 0 ? approvedQuotes.length / data.quotes.length : 0;
-    const averageQuoteValue = data.quotes.length > 0 ? sumTotals(data.quotes) / data.quotes.length : 0;
-    const topQuotedServices = Object.values(
-      data.quotes.reduce((accumulator, quote) => {
-        quote.items?.forEach((item) => {
-          const key = item.serviceName || "Servicio sin nombre";
-          if (!accumulator[key]) {
-            accumulator[key] = { name: key, count: 0, total: 0 };
-          }
-          accumulator[key].count += Number(item.quantity || 1);
-          accumulator[key].total += normalizeAmount(item.total);
-        });
-        return accumulator;
-      }, {})
-    )
-      .sort((left, right) => right.count - left.count || right.total - left.total)
-      .slice(0, 5);
+function calculateStatistics(data) {
+  const now = new Date();
+  const quotesThisMonth = data.quotes.filter((quote) => isSameMonth(quote.date || quote.createdAt, now));
+  const invoicesThisMonth = data.invoices.filter((invoice) => isSameMonth(invoice.issueDate || invoice.createdAt, now));
+  const newClientsThisMonth = data.clients.filter((client) => isSameMonth(client.createdAt || client.updatedAt, now));
+  const approvedQuotes = data.quotes.filter((quote) => quote.status === "approved");
+  const totalQuotedThisMonth = quotesThisMonth.reduce((sum, quote) => sum + normalizeAmount(quote.totals?.total), 0);
+  const totalInvoicedThisMonth = invoicesThisMonth.reduce((sum, invoice) => sum + normalizeAmount(invoice.totals?.total), 0);
+  const pendingToCollect = data.invoices
+    .filter((invoice) => !["paid", "completed"].includes(invoice.status))
+    .reduce((sum, invoice) => sum + normalizeAmount(invoice.totals?.total), 0);
+  const approvalRate = data.quotes.length > 0 ? approvedQuotes.length / data.quotes.length : 0;
+  const averageQuoteValue = data.quotes.length > 0 ? sumTotals(data.quotes) / data.quotes.length : 0;
+  const topQuotedServices = Object.values(
+    data.quotes.reduce((accumulator, quote) => {
+      quote.items?.forEach((item) => {
+        const key = item.serviceName || "Servicio sin nombre";
+        if (!accumulator[key]) {
+          accumulator[key] = { name: key, count: 0, total: 0 };
+        }
+        accumulator[key].count += Number(item.quantity || 1);
+        accumulator[key].total += normalizeAmount(item.total);
+      });
+      return accumulator;
+    }, {})
+  )
+    .sort((left, right) => right.count - left.count || right.total - left.total)
+    .slice(0, 5);
 
-    return {
-      totalQuotedThisMonth,
-      totalInvoicedThisMonth,
-      pendingToCollect,
-      newClientsThisMonth: newClientsThisMonth.length,
-      quotesCreatedThisMonth: quotesThisMonth.length,
-      approvedQuotes: approvedQuotes.length,
-      approvalRate,
-      averageQuoteValue,
-      topQuotedServices,
-      recentActivity: buildRecentActivity(data)
-    };
-  }, [data]);
+  return {
+    totalQuotedThisMonth,
+    totalInvoicedThisMonth,
+    pendingToCollect,
+    newClientsThisMonth: newClientsThisMonth.length,
+    quotesCreatedThisMonth: quotesThisMonth.length,
+    approvedQuotes: approvedQuotes.length,
+    approvalRate,
+    averageQuoteValue,
+    topQuotedServices,
+    recentActivity: buildRecentActivity(data)
+  };
+}
+
+function Dashboard({ data }) {
+  const stats = useMemo(() => calculateStatistics(data), [data]);
 
   return (
     <div className="space-y-4">
       <SectionHeader
         eyebrow="Resumen"
-        title="Tu estudio en orden"
-        description="Consulta rápidamente cotizaciones, facturas, pagos y clientes desde un panel claro para operación diaria."
+        title="Panel principal"
+        description="Consulta el estado general del estudio y entra a estadísticas cuando quieras revisar números con más detalle."
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Cotizado este mes"
-          value={formatCurrency(dashboardMetrics.totalQuotedThisMonth, data.settings.currency)}
-          hint={`${dashboardMetrics.quotesCreatedThisMonth} cotizaciones creadas este mes.`}
-        />
-        <StatCard
-          label="Facturado este mes"
-          value={formatCurrency(dashboardMetrics.totalInvoicedThisMonth, data.settings.currency)}
-          hint="Solo facturas emitidas en el mes actual."
-        />
-        <StatCard
-          label="Pendiente por cobrar"
-          value={formatCurrency(dashboardMetrics.pendingToCollect, data.settings.currency)}
-          hint="Facturas aún no marcadas como pagadas."
-        />
-        <StatCard
-          label="Clientes nuevos"
-          value={String(dashboardMetrics.newClientsThisMonth)}
-          hint="Altas creadas durante el mes actual."
-        />
-        <StatCard
-          label="Cotizaciones del mes"
-          value={String(dashboardMetrics.quotesCreatedThisMonth)}
-          hint="Nuevas propuestas emitidas este mes."
-        />
-        <StatCard
-          label="Cotizaciones aprobadas"
-          value={String(dashboardMetrics.approvedQuotes)}
-          hint="Propuestas con estado aprobado."
-        />
-        <StatCard
-          label="Tasa de aprobación"
-          value={`${Math.round(dashboardMetrics.approvalRate * 100)}%`}
-          hint="Aprobadas / total de cotizaciones."
-        />
-        <StatCard
-          label="Valor promedio"
-          value={formatCurrency(dashboardMetrics.averageQuoteValue, data.settings.currency)}
-          hint="Promedio por cotización guardada."
-        />
+        <StatCard label="Clientes" value={String(data.clients.length)} hint="Base activa de clientes del estudio." />
+        <StatCard label="Servicios" value={String(data.services.length)} hint="Catálogo disponible para cotizar." />
+        <StatCard label="Cotizaciones activas" value={String(data.quotes.filter((quote) => quote.status !== "archived").length)} hint="Propuestas visibles en el flujo principal." />
+        <StatCard label="Pendiente por cobrar" value={formatCurrency(stats.pendingToCollect, data.settings.currency)} hint="Saldo actual pendiente de cobro." />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
+      <div className="grid gap-4 xl:grid-cols-2">
         <div className="panel p-6">
-          <h3 className="text-xl font-semibold text-ink">Servicios más cotizados</h3>
-          <div className="mt-4 space-y-3">
-            {dashboardMetrics.topQuotedServices.map((service) => (
-              <div key={service.name} className="rounded-2xl border border-slate-100 px-4 py-3 text-sm">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="font-semibold text-ink">{service.name}</span>
-                  <span className="text-slate-500">{service.count} usos</span>
-                </div>
-                <p className="mt-1 text-slate-500">Total cotizado: {formatCurrency(service.total, data.settings.currency)}</p>
-              </div>
-            ))}
-            {dashboardMetrics.topQuotedServices.length === 0 ? <p className="text-sm text-slate-500">Aún no hay suficientes cotizaciones para detectar servicios destacados.</p> : null}
+          <h3 className="text-xl font-semibold text-ink">Radar del mes</h3>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl bg-sand px-4 py-4 text-sm">
+              <p className="text-slate-500">Cotizado este mes</p>
+              <p className="mt-2 text-2xl font-semibold text-ink">{formatCurrency(stats.totalQuotedThisMonth, data.settings.currency)}</p>
+            </div>
+            <div className="rounded-2xl bg-sand px-4 py-4 text-sm">
+              <p className="text-slate-500">Facturado este mes</p>
+              <p className="mt-2 text-2xl font-semibold text-ink">{formatCurrency(stats.totalInvoicedThisMonth, data.settings.currency)}</p>
+            </div>
+            <div className="rounded-2xl bg-sand px-4 py-4 text-sm">
+              <p className="text-slate-500">Clientes nuevos</p>
+              <p className="mt-2 text-2xl font-semibold text-ink">{stats.newClientsThisMonth}</p>
+            </div>
+            <div className="rounded-2xl bg-sand px-4 py-4 text-sm">
+              <p className="text-slate-500">Aprobación</p>
+              <p className="mt-2 text-2xl font-semibold text-ink">{Math.round(stats.approvalRate * 100)}%</p>
+            </div>
           </div>
         </div>
 
         <div className="panel p-6">
           <h3 className="text-xl font-semibold text-ink">Actividad reciente</h3>
           <div className="mt-4 space-y-3">
-            {dashboardMetrics.recentActivity.map((activity) => (
+            {stats.recentActivity.slice(0, 5).map((activity) => (
               <div key={activity.id} className="rounded-2xl border border-slate-100 px-4 py-3 text-sm">
                 <div className="flex items-center justify-between gap-4">
                   <span className="font-semibold text-ink">{activity.title}</span>
@@ -199,7 +171,66 @@ function Dashboard({ data }) {
                 <p className="mt-1 text-slate-500">{activity.type} · {activity.subtitle} · {formatDate(activity.date)}</p>
               </div>
             ))}
-            {dashboardMetrics.recentActivity.length === 0 ? <p className="text-sm text-slate-500">Aún no hay actividad reciente registrada.</p> : null}
+            {stats.recentActivity.length === 0 ? <p className="text-sm text-slate-500">Aún no hay actividad reciente registrada.</p> : null}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatisticsSection({ data }) {
+  const stats = useMemo(() => calculateStatistics(data), [data]);
+
+  return (
+    <div className="space-y-4">
+      <SectionHeader
+        eyebrow="Analítica"
+        title="Estadísticas"
+        description="Revisa métricas de cotizaciones, facturación, cobros y servicios más solicitados del estudio."
+      />
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Cotizado este mes" value={formatCurrency(stats.totalQuotedThisMonth, data.settings.currency)} hint={`${stats.quotesCreatedThisMonth} cotizaciones creadas este mes.`} />
+        <StatCard label="Facturado este mes" value={formatCurrency(stats.totalInvoicedThisMonth, data.settings.currency)} hint="Solo facturas emitidas en el mes actual." />
+        <StatCard label="Pendiente por cobrar" value={formatCurrency(stats.pendingToCollect, data.settings.currency)} hint="Facturas aún no marcadas como pagadas." />
+        <StatCard label="Clientes nuevos" value={String(stats.newClientsThisMonth)} hint="Altas creadas durante el mes actual." />
+        <StatCard label="Cotizaciones del mes" value={String(stats.quotesCreatedThisMonth)} hint="Nuevas propuestas emitidas este mes." />
+        <StatCard label="Cotizaciones aprobadas" value={String(stats.approvedQuotes)} hint="Propuestas con estado aprobado." />
+        <StatCard label="Tasa de aprobación" value={`${Math.round(stats.approvalRate * 100)}%`} hint="Aprobadas / total de cotizaciones." />
+        <StatCard label="Valor promedio" value={formatCurrency(stats.averageQuoteValue, data.settings.currency)} hint="Promedio por cotización guardada." />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <div className="panel p-6">
+          <h3 className="text-xl font-semibold text-ink">Servicios más cotizados</h3>
+          <div className="mt-4 space-y-3">
+            {stats.topQuotedServices.map((service) => (
+              <div key={service.name} className="rounded-2xl border border-slate-100 px-4 py-3 text-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="font-semibold text-ink">{service.name}</span>
+                  <span className="text-slate-500">{service.count} usos</span>
+                </div>
+                <p className="mt-1 text-slate-500">Total cotizado: {formatCurrency(service.total, data.settings.currency)}</p>
+              </div>
+            ))}
+            {stats.topQuotedServices.length === 0 ? <p className="text-sm text-slate-500">Aún no hay suficientes cotizaciones para detectar servicios destacados.</p> : null}
+          </div>
+        </div>
+
+        <div className="panel p-6">
+          <h3 className="text-xl font-semibold text-ink">Actividad reciente</h3>
+          <div className="mt-4 space-y-3">
+            {stats.recentActivity.map((activity) => (
+              <div key={activity.id} className="rounded-2xl border border-slate-100 px-4 py-3 text-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="font-semibold text-ink">{activity.title}</span>
+                  <span className="text-slate-500">{formatCurrency(activity.amount, data.settings.currency)}</span>
+                </div>
+                <p className="mt-1 text-slate-500">{activity.type} · {activity.subtitle} · {formatDate(activity.date)}</p>
+              </div>
+            ))}
+            {stats.recentActivity.length === 0 ? <p className="text-sm text-slate-500">Aún no hay actividad reciente registrada.</p> : null}
           </div>
         </div>
 
@@ -228,7 +259,6 @@ function Dashboard({ data }) {
     </div>
   );
 }
-
 function ClientsSection({ clients, onSaveClient, onDeleteClient, dataSource }) {
   const [editingClient, setEditingClient] = useState(null);
   const [draftResetToken, setDraftResetToken] = useState(0);
@@ -894,6 +924,7 @@ export default function App() {
       {data.settings ? (
         <>
           {activeSection === "dashboard" ? <Dashboard data={data} /> : null}
+          {activeSection === "statistics" ? <StatisticsSection data={data} /> : null}
           {activeSection === "clients" ? <ClientsSection clients={data.clients} onSaveClient={handleSaveClient} onDeleteClient={handleDeleteClient} dataSource={clientsSource} /> : null}
           {activeSection === "services" ? (
             <ServicesSection services={data.services} onSaveService={handleSaveService} onDeleteService={handleDeleteService} />
@@ -942,6 +973,7 @@ export default function App() {
     </Layout>
   );
 }
+
 
 
 
