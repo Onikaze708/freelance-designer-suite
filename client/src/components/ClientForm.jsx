@@ -1,4 +1,4 @@
-﻿const emptyClient = { name: "", businessName: "", email: "", phone: "", notes: "", workHistory: "" };
+﻿const emptyClient = { name: "", businessName: "", email: "", phone: "", address: "", notes: "", workHistory: "" };
 
 export function ClientForm({ editingClient, onSubmit, onCancel }) {
   const initial = editingClient || emptyClient;
@@ -9,16 +9,19 @@ export function ClientForm({ editingClient, onSubmit, onCancel }) {
       onSubmit({
         name: formData.get("name"),
         businessName: formData.get("businessName"),
+        company: formData.get("businessName"),
         email: formData.get("email"),
         phone: formData.get("phone"),
+        address: formData.get("address"),
         notes: formData.get("notes"),
         workHistory: formData.get("workHistory")
       });
     }}>
       <div><label className="label">Nombre</label><input name="name" className="input" defaultValue={initial.name} required /></div>
-      <div><label className="label">Negocio</label><input name="businessName" className="input" defaultValue={initial.businessName} /></div>
+      <div><label className="label">Negocio</label><input name="businessName" className="input" defaultValue={initial.businessName || initial.company} /></div>
       <div><label className="label">Correo</label><input name="email" type="email" className="input" defaultValue={initial.email} /></div>
       <div><label className="label">Teléfono</label><input name="phone" className="input" defaultValue={initial.phone} /></div>
+      <div className="md:col-span-2"><label className="label">Dirección</label><input name="address" className="input" defaultValue={initial.address} /></div>
       <div className="md:col-span-2"><label className="label">Notas</label><textarea name="notes" className="input min-h-24" defaultValue={initial.notes} /></div>
       <div className="md:col-span-2"><label className="label">Historial de trabajos previos</label><textarea name="workHistory" className="input min-h-24" defaultValue={initial.workHistory} /></div>
       <div className="md:col-span-2 flex flex-wrap gap-3">

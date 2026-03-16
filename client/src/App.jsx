@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from "react";
-import { api, getCurrentSession, getStudioSettingsSource, hasSupabaseConfig, signInWithPassword, signOut, subscribeToAuthChanges } from "./api";
+import { api, getClientsDataSource, getCurrentSession, getStudioSettingsSource, hasSupabaseConfig, signInWithPassword, signOut, subscribeToAuthChanges } from "./api";
 import { Layout } from "./components/Layout";
 import { StatCard } from "./components/StatCard";
 import { SectionHeader } from "./components/SectionHeader";
@@ -101,7 +101,7 @@ function Dashboard({ data }) {
   );
 }
 
-function ClientsSection({ clients, onSaveClient }) {
+function ClientsSection({ clients, onSaveClient, dataSource }) {
   const [editingClient, setEditingClient] = useState(null);
 
   return (
@@ -111,6 +111,11 @@ function ClientsSection({ clients, onSaveClient }) {
         title="Clientes"
         description="Guarda los datos esenciales y reutiliza la información en futuras cotizaciones e invoices."
       />
+
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-600">
+        <span className="font-medium text-ink">Data Source:</span>
+        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${dataSource === "Supabase" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{dataSource}</span>
+      </div>
 
       <ClientForm
         editingClient={editingClient}
@@ -481,6 +486,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [settingsSource, setSettingsSource] = useState("LocalStorage");
+  const [clientsSource, setClientsSource] = useState("LocalStorage Fallback");
   const [authLoading, setAuthLoading] = useState(hasSupabaseConfig);
   const [session, setSession] = useState(null);
   const [authError, setAuthError] = useState("");
@@ -492,6 +498,7 @@ export default function App() {
       setError("");
       setData(await api.bootstrap());
       setSettingsSource(getStudioSettingsSource());
+      setClientsSource(getClientsDataSource());
     } catch (nextError) {
       setError(nextError.message);
     } finally {
@@ -598,6 +605,7 @@ export default function App() {
   async function handleUpdateSettings(payload) {
     await api.updateSettings(payload);
     setSettingsSource(getStudioSettingsSource());
+      setClientsSource(getClientsDataSource());
     await loadApp();
   }
 
@@ -642,7 +650,7 @@ export default function App() {
       {data.settings ? (
         <>
           {activeSection === "dashboard" ? <Dashboard data={data} /> : null}
-          {activeSection === "clients" ? <ClientsSection clients={data.clients} onSaveClient={handleSaveClient} /> : null}
+          {activeSection === "clients" ? <ClientsSection clients={data.clients} onSaveClient={handleSaveClient} dataSource={clientsSource} /> : null}
           {activeSection === "services" ? (
             <ServicesSection services={data.services} onSaveService={handleSaveService} onDeleteService={handleDeleteService} />
           ) : null}
@@ -687,6 +695,7 @@ export default function App() {
     </Layout>
   );
 }
+
 
 
 

@@ -1,4 +1,4 @@
-import seedData from "../data/local-seed-data.json";
+﻿import seedData from "../data/local-seed-data.json";
 
 const STORAGE_KEY = "freelance-designer-suite.local-store.v1";
 const MOJIBAKE_PATTERN = /[\u00C3\u00C2\u00E2\uFFFD]/;
@@ -106,6 +106,21 @@ function normalizeServiceRecord(service, fallbackId, index = 0) {
   );
 }
 
+function normalizeClientRecord(client, fallbackId) {
+  return {
+    id: client.id || fallbackId || createId("client"),
+    name: client.name || "",
+    businessName: client.businessName || client.company || "",
+    company: client.company || client.businessName || "",
+    email: client.email || "",
+    phone: client.phone || "",
+    address: client.address || "",
+    notes: client.notes || "",
+    workHistory: client.workHistory || client.work_history || "",
+    createdAt: client.createdAt || client.created_at || null,
+    updatedAt: client.updatedAt || client.updated_at || null
+  };
+}
 function mergeSettings(existingSettings = {}) {
   return mergeNestedObjects(clone(seedDefaults.settings), repairTextTree(existingSettings));
 }
@@ -133,7 +148,7 @@ function normalizeStore(store) {
 
   return {
     settings: mergeSettings(repairedStore.settings),
-    clients: Array.isArray(repairedStore.clients) ? repairedStore.clients : [],
+    clients: Array.isArray(repairedStore.clients) ? repairedStore.clients.map((client) => normalizeClientRecord(client, client.id)) : [],
     services: mergeServices(repairedStore.services),
     quotes: Array.isArray(repairedStore.quotes) ? repairedStore.quotes : [],
     invoices: Array.isArray(repairedStore.invoices) ? repairedStore.invoices : [],
@@ -183,6 +198,14 @@ export function syncLocalSettings(nextSettings) {
   const current = readLocalStore();
   current.settings = mergeSettings({ ...current.settings, ...nextSettings });
   return writeLocalStore(current).settings;
+}
+
+export function syncLocalClients(nextClients) {
+  const current = readLocalStore();
+  current.clients = Array.isArray(nextClients)
+    ? nextClients.map((client) => normalizeClientRecord(client, client.id))
+    : current.clients;
+  return writeLocalStore(current).clients;
 }
 
 function updateLocalStore(mutator) {
@@ -235,15 +258,17 @@ export const localApi = {
   createClient(payload) {
     const saved = updateLocalStore((store) => {
       store.clients.unshift(
-        withTimestamps({
+        withTimestamps(normalizeClientRecord({
           id: createId("client"),
           name: payload.name,
           businessName: payload.businessName,
+          company: payload.company,
           email: payload.email,
           phone: payload.phone,
+          address: payload.address,
           notes: payload.notes,
           workHistory: payload.workHistory
-        })
+        }))
       );
       return store;
     });
@@ -252,7 +277,7 @@ export const localApi = {
   updateClient(id, payload) {
     const saved = updateLocalStore((store) => {
       store.clients = store.clients.map((client) =>
-        client.id === id ? withTimestamps({ ...client, ...payload }, client) : client
+        client.id === id ? withTimestamps(normalizeClientRecord({ ...client, ...payload, id }, id), client) : client
       );
       return store;
     });
@@ -307,7 +332,7 @@ export const localApi = {
     const saved = updateLocalStore((store) => {
       const quote = store.quotes.find((item) => item.id === id);
       if (!quote) {
-        throw new Error("Cotización no encontrada");
+        throw new Error("CotizaciÃ³n no encontrada");
       }
 
       const invoice = withTimestamps({
@@ -366,3 +391,4 @@ export const localApi = {
     return Promise.resolve(saved.settings);
   }
 };
+

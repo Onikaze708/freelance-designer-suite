@@ -1,4 +1,5 @@
-﻿import { localApi, syncLocalSettings } from "./utils/localStore";
+﻿import { localApi, syncLocalClients, syncLocalSettings } from "./utils/localStore";
+import { createRemoteClient, loadRemoteClients, updateRemoteClient } from "./utils/clientsRemote";
 import { loadRemoteStudioSettings, saveRemoteStudioSettings } from "./utils/studioSettingsRemote";
 import { hasSupabaseConfig, supabase } from "./utils/supabaseClient";
 
@@ -10,13 +11,22 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/
 const LOCAL_MODE_KEY = "freelance-designer-suite.local-mode";
 
 let lastStudioSettingsSource = "LocalStorage";
+let lastClientsSource = "LocalStorage Fallback";
 
 export function getStudioSettingsSource() {
   return lastStudioSettingsSource;
 }
 
+export function getClientsDataSource() {
+  return lastClientsSource;
+}
+
 function setStudioSettingsSource(source) {
   lastStudioSettingsSource = source;
+}
+
+function setClientsDataSource(source) {
+  lastClientsSource = source;
 }
 
 function readLocalModePreference() {
@@ -104,6 +114,23 @@ async function hydrateStudioSettings(appData) {
   }
 }
 
+async function hydrateClients(appData) {
+  try {
+    const remoteClients = await loadRemoteClients();
+    if (!remoteClients) {
+      setClientsDataSource("LocalStorage Fallback");
+      return appData;
+    }
+
+    const syncedClients = syncLocalClients(remoteClients);
+    setClientsDataSource("Supabase");
+    return { ...appData, clients: syncedClients };
+  } catch (_error) {
+    setClientsDataSource("LocalStorage Fallback");
+    return appData;
+  }
+}
+
 export async function signInWithPassword({ email, password }) {
   if (!hasSupabaseConfig || !supabase) {
     throw new Error("Supabase Auth no está configurado.");
@@ -154,17 +181,39 @@ export function subscribeToAuthChanges(callback) {
 export { hasSupabaseConfig };
 
 export const api = {
-  bootstrap: async () => hydrateStudioSettings(await runWithFallback(() => request("/bootstrap"), () => localApi.bootstrap())),
-  createClient: (payload) =>
-    runWithFallback(
-      () => request("/clients", { method: "POST", body: JSON.stringify(payload) }),
-      () => localApi.createClient(payload)
-    ),
-  updateClient: (id, payload) =>
-    runWithFallback(
-      () => request(`/clients/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
-      () => localApi.updateClient(id, payload)
-    ),
+  bootstrap: async () => {
+    const baseData = await runWithFallback(() => request("/bootstrap"), () => localApi.bootstrap());
+    const withSettings = await hydrateStudioSettings(baseData);
+    return hydrateClients(withSettings);
+  },
+  createClient: async (payload) => {
+    try {
+      const remoteClient = await createRemoteClient(payload);
+      if (remoteClient) {
+        setClientsDataSource("Supabase");
+        return remoteClient;
+      }
+    } catch (_error) {
+      // Fall back to local storage below.
+    }
+
+    setClientsDataSource("LocalStorage Fallback");
+    return localApi.createClient(payload);
+  },
+  updateClient: async (id, payload) => {
+    try {
+      const remoteClient = await updateRemoteClient(id, payload);
+      if (remoteClient) {
+        setClientsDataSource("Supabase");
+        return remoteClient;
+      }
+    } catch (_error) {
+      // Fall back to local storage below.
+    }
+
+    setClientsDataSource("LocalStorage Fallback");
+    return localApi.updateClient(id, payload);
+  },
   createService: (payload) =>
     runWithFallback(
       () => request("/services", { method: "POST", body: JSON.stringify(payload) }),
