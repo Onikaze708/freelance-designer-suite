@@ -1,5 +1,13 @@
 import { hasSupabaseConfig, supabase } from "./supabaseClient";
 
+let quotesTableAvailable = true;
+
+function isMissingTableError(error) {
+  const message = String(error?.message || error?.details || "").toLowerCase();
+  const code = String(error?.code || error?.status || "").toLowerCase();
+  return code === "404" || message.includes("relation") || message.includes("does not exist") || message.includes("could not find the table") || message.includes("not found");
+}
+
 function normalizeNumber(value) {
   const next = Number(value ?? 0);
   return Number.isFinite(next) ? next : 0;
@@ -114,12 +122,16 @@ async function generateNextQuoteNumber() {
 }
 
 export async function loadRemoteQuotes() {
-  if (!hasSupabaseConfig || !supabase) {
+  if (!hasSupabaseConfig || !supabase || !quotesTableAvailable) {
     return null;
   }
 
   const { data, error } = await supabase.from("quotes").select("*").order("updated_at", { ascending: false });
   if (error) {
+    if (isMissingTableError(error)) {
+      quotesTableAvailable = false;
+      return null;
+    }
     throw new Error(error.message || "No se pudieron cargar las cotizaciones desde Supabase");
   }
 
@@ -127,7 +139,7 @@ export async function loadRemoteQuotes() {
 }
 
 export async function createRemoteQuote(payload) {
-  if (!hasSupabaseConfig || !supabase) {
+  if (!hasSupabaseConfig || !supabase || !quotesTableAvailable) {
     return null;
   }
 
@@ -151,7 +163,7 @@ export async function createRemoteQuote(payload) {
 }
 
 export async function updateRemoteQuote(id, payload) {
-  if (!hasSupabaseConfig || !supabase) {
+  if (!hasSupabaseConfig || !supabase || !quotesTableAvailable) {
     return null;
   }
 
@@ -170,7 +182,7 @@ export async function updateRemoteQuote(id, payload) {
 }
 
 export async function deleteRemoteQuote(id) {
-  if (!hasSupabaseConfig || !supabase) {
+  if (!hasSupabaseConfig || !supabase || !quotesTableAvailable) {
     return null;
   }
 
@@ -183,7 +195,7 @@ export async function deleteRemoteQuote(id) {
 }
 
 export async function migrateLocalQuotesToRemote(localQuotes) {
-  if (!hasSupabaseConfig || !supabase || !Array.isArray(localQuotes) || localQuotes.length === 0) {
+  if (!hasSupabaseConfig || !supabase || !quotesTableAvailable || !Array.isArray(localQuotes) || localQuotes.length === 0) {
     return [];
   }
 

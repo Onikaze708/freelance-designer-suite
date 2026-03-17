@@ -2,7 +2,7 @@
 
 const sections = [
   { key: "dashboard", label: "Panel principal" },
-  { key: "statistics", label: "Estad?sticas" },
+  { key: "statistics", label: "Estadísticas" },
   { key: "clients", label: "Clientes" },
   { key: "services", label: "Servicios" },
   { key: "editorial", label: "Calculador Editorial" },
