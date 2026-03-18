@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { api, getClientsDataSource, getCurrentSession, getStudioSettingsSource, hasSupabaseConfig, signInWithPassword, signOut, subscribeToAuthChanges } from "./api";
+import { api, getClientsDataSource, getCurrentSession, getQuotesDataSource, getStudioSettingsSource, hasSupabaseConfig, signInWithPassword, signOut, subscribeToAuthChanges } from "./api";
 import { Layout } from "./components/Layout";
 import { StatCard } from "./components/StatCard";
 import { SectionHeader } from "./components/SectionHeader";
@@ -441,7 +441,9 @@ function QuotesSection({
   onConvertQuote,
   onDeleteQuote,
   onDuplicateQuote,
-  onArchiveQuote
+  onArchiveQuote,
+  quoteFeedback,
+  quotesSource
 }) {
   const [showArchived, setShowArchived] = useState(false);
   const visibleQuotes = data.quotes.filter((quote) => (showArchived ? quote.status === "archived" : quote.status !== "archived"));
@@ -453,6 +455,12 @@ function QuotesSection({
         title="Constructor de cotizaciones"
         description="Selecciona el cliente, agrega servicios, ajusta recargos y genera una propuesta lista para enviar."
       />
+
+      {quoteFeedback?.message ? (
+        <div className={`rounded-2xl border px-4 py-3 text-sm ${quoteFeedback.type === "success" ? "border-emerald-100 bg-emerald-50 text-emerald-700" : "border-rose-100 bg-rose-50 text-rose-700"}`}>
+          {quoteFeedback.message}
+        </div>
+      ) : null}
 
       <QuoteBuilder
         clients={data.clients}
@@ -470,9 +478,14 @@ function QuotesSection({
             <p className="text-sm font-semibold text-ink">{showArchived ? "Cotizaciones archivadas" : "Cotizaciones activas"}</p>
             <p className="text-xs text-slate-500">{showArchived ? "Revisa propuestas archivadas y mantenlas fuera de la lista principal." : "Administra propuestas vigentes sin mezclar pruebas o cotizaciones cerradas."}</p>
           </div>
-          <button className="button-secondary" type="button" onClick={() => setShowArchived((current) => !current)}>
-            {showArchived ? "Ver activas" : "Ver archivadas"}
-          </button>
+          <div className="flex items-center gap-3">
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${quotesSource === "Supabase" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+              Data Source: {quotesSource}
+            </span>
+            <button className="button-secondary" type="button" onClick={() => setShowArchived((current) => !current)}>
+              {showArchived ? "Ver activas" : "Ver archivadas"}
+            </button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
@@ -711,6 +724,8 @@ export default function App() {
   const [error, setError] = useState("");
   const [settingsSource, setSettingsSource] = useState("LocalStorage");
   const [clientsSource, setClientsSource] = useState("LocalStorage Fallback");
+  const [quotesSource, setQuotesSource] = useState("LocalStorage Fallback");
+  const [quoteFeedback, setQuoteFeedback] = useState({ type: "", message: "" });
   const [authLoading, setAuthLoading] = useState(hasSupabaseConfig);
   const [session, setSession] = useState(null);
   const [authError, setAuthError] = useState("");
@@ -723,6 +738,7 @@ export default function App() {
       setData(await api.bootstrap());
       setSettingsSource(getStudioSettingsSource());
       setClientsSource(getClientsDataSource());
+      setQuotesSource(getQuotesDataSource());
     } catch (nextError) {
       setError(nextError.message);
     } finally {
@@ -808,15 +824,27 @@ export default function App() {
   }
 
   async function handleSaveQuote(quote) {
-    if (quote.id) {
-      await api.updateQuote(quote.id, quote);
-    } else {
-      await api.createQuote({ ...quote, status: "draft" });
-    }
+    try {
+      setQuoteFeedback({ type: "", message: "" });
 
-    setEditingQuote(null);
-    await loadApp();
-    setActiveSection("quotes");
+      const savedQuote = quote.id
+        ? await api.updateQuote(quote.id, quote)
+        : await api.createQuote({ ...quote, status: "draft" });
+
+      if (!savedQuote?.id) {
+        throw new Error("Error al guardar cotización");
+      }
+
+      setEditingQuote(null);
+      await loadApp();
+      setQuoteFeedback({ type: "success", message: "Cotización guardada correctamente" });
+      setActiveSection("quotes");
+      return savedQuote;
+    } catch (nextError) {
+      const message = nextError?.message || "Error al guardar cotización";
+      setQuoteFeedback({ type: "error", message });
+      throw nextError;
+    }
   }
 
   async function handleConvertQuote(quote) {
@@ -943,6 +971,8 @@ export default function App() {
               onDuplicateQuote={handleDuplicateQuote}
               onArchiveQuote={handleArchiveQuote}
               onDeleteQuote={handleDeleteQuote}
+              quoteFeedback={quoteFeedback}
+              quotesSource={quotesSource}
             />
           ) : null}
           {activeSection === "invoices" ? <InvoicesSection data={data} onUpdateInvoice={handleUpdateInvoice} /> : null}
@@ -973,6 +1003,7 @@ export default function App() {
     </Layout>
   );
 }
+
 
 
 

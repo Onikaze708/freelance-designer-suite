@@ -1,4 +1,4 @@
-export const CATEGORY_OPTIONS = [
+﻿export const CATEGORY_OPTIONS = [
   "Identidad visual",
   "Redes sociales",
   "Publicidad y marketing",
@@ -8,6 +8,7 @@ export const CATEGORY_OPTIONS = [
   "Photography",
   "Monthly Creative Plans"
 ];
+
 export const SERVICE_OPTION_LABELS = {
   cantidad: "Cantidad",
   complejidad: "Complejidad",
@@ -35,8 +36,17 @@ export function formatCurrency(value, currency = "USD") {
   return new Intl.NumberFormat("es-US", { style: "currency", currency }).format(Number(value || 0));
 }
 
+function toSafeNumber(value) {
+  const next = Number(value);
+  return Number.isFinite(next) ? next : 0;
+}
+
+function clampNumber(value, minimum = 0, maximum = Number.POSITIVE_INFINITY) {
+  return Math.min(Math.max(value, minimum), maximum);
+}
+
 export function getServiceBasePrice(service) {
-  return Number(service.base_price ?? service.basePrice ?? 0);
+  return toSafeNumber(service.base_price ?? service.basePrice ?? 0);
 }
 
 export function getServiceUnit(service) {
@@ -53,21 +63,21 @@ export function getServiceOptions(service) {
 
 function feeAmount(baseAmount, feeConfig, enabled) {
   if (!enabled) return 0;
-  if (feeConfig.mode === "fixed") return Number(feeConfig.value || 0);
-  return baseAmount * (Number(feeConfig.value || 0) / 100);
+  if (feeConfig.mode === "fixed") return toSafeNumber(feeConfig.value);
+  return toSafeNumber(baseAmount) * (toSafeNumber(feeConfig.value) / 100);
 }
 
 export function calculateLineItem(item, service, settings) {
-  const quantity = serviceHasOption(service, "cantidad") ? Number(item.quantity || 1) : 1;
+  const quantity = serviceHasOption(service, "cantidad") ? Math.max(1, toSafeNumber(item.quantity || 1)) : 1;
   const base = getServiceBasePrice(service) * quantity;
-  const complexityRate = serviceHasOption(service, "complejidad") ? Number(settings.complexityRates[item.complexity] || 0) : 0;
-  const urgencyRate = serviceHasOption(service, "urgencia") ? Number(settings.urgencyRates[item.urgency] || 0) : 0;
+  const complexityRate = serviceHasOption(service, "complejidad") ? toSafeNumber(settings.complexityRates[item.complexity] || 0) : 0;
+  const urgencyRate = serviceHasOption(service, "urgencia") ? toSafeNumber(settings.urgencyRates[item.urgency] || 0) : 0;
   const complexityFee = base * complexityRate;
   const urgencyFee = base * urgencyRate;
-  const included = Number(settings.revisionSettings.includedRevisions || 1);
-  const revisions = serviceHasOption(service, "revisiones") ? Number(item.revisions || included) : included;
+  const included = toSafeNumber(settings.revisionSettings.includedRevisions || 1);
+  const revisions = serviceHasOption(service, "revisiones") ? toSafeNumber(item.revisions || included) : included;
   const extraRevisions = Math.max(0, revisions - included);
-  const revisionFee = extraRevisions * Number(settings.revisionSettings.extraRevisionCost || 0);
+  const revisionFee = extraRevisions * toSafeNumber(settings.revisionSettings.extraRevisionCost || 0);
   const subtotalBeforeFlags = base + complexityFee + urgencyFee + revisionFee;
   const researchFee = serviceHasOption(service, "investigacion") ? feeAmount(subtotalBeforeFlags, settings.researchFee, item.includesResearch) : 0;
   const strategyFee = serviceHasOption(service, "estrategia") ? feeAmount(subtotalBeforeFlags, settings.strategyFee, item.includesStrategy) : 0;
@@ -93,15 +103,39 @@ export function calculateQuoteTotals(items, services, settings, options) {
     return service ? { ...calculateLineItem(item, service, settings), serviceName: service.name } : item;
   });
 
-  const subtotal = enrichedItems.reduce((sum, item) => sum + Number(item.lineSubtotal || 0), 0);
-  const extras = enrichedItems.reduce((sum, item) => sum + Number(item.complexityFee || 0) + Number(item.urgencyFee || 0) + Number(item.revisionFee || 0) + Number(item.researchFee || 0) + Number(item.strategyFee || 0), 0);
-  const discountValue = Number(options.discountValue || 0);
-  const discount = options.discountType === "percent" ? (subtotal + extras) * (discountValue / 100) : discountValue;
-  const taxableBase = subtotal + extras - discount;
-  const taxes = options.applyTax ? taxableBase * (Number(options.taxRate || 0) / 100) : 0;
-  const total = taxableBase + taxes;
+  const subtotal = enrichedItems.reduce((sum, item) => sum + toSafeNumber(item.lineSubtotal || 0), 0);
+  const extras = enrichedItems.reduce((sum, item) => {
+    return sum + toSafeNumber(item.complexityFee || 0) + toSafeNumber(item.urgencyFee || 0) + toSafeNumber(item.revisionFee || 0) + toSafeNumber(item.researchFee || 0) + toSafeNumber(item.strategyFee || 0);
+  }, 0);
 
-  return { items: enrichedItems, totals: { subtotal, extras, discount, taxes, total } };
+  const grossTotal = Math.max(0, subtotal + extras);
+  const discountType = options?.discountType === "fixed" ? "fixed" : "percent";
+  const rawDiscountValue = clampNumber(toSafeNumber(options?.discountValue), 0);
+  const normalizedDiscountValue = discountType === "percent" ? clampNumber(rawDiscountValue, 0, 100) : rawDiscountValue;
+  const rawDiscountAmount = discountType === "percent" ? grossTotal * (normalizedDiscountValue / 100) : normalizedDiscountValue;
+  const discount = clampNumber(rawDiscountAmount, 0, grossTotal);
+  const taxableBase = clampNumber(grossTotal - discount, 0);
+  const taxRate = clampNumber(toSafeNumber(options?.taxRate), 0);
+  const taxes = options?.applyTax ? Math.max(0, taxableBase * (taxRate / 100)) : 0;
+  const total = Math.max(0, taxableBase + taxes);
+
+  return {
+    items: enrichedItems,
+    totals: {
+      subtotal,
+      extras,
+      discount,
+      discountAmount: discount,
+      taxes,
+      total
+    },
+    meta: {
+      grossTotal,
+      discountType,
+      discountValue: normalizedDiscountValue,
+      taxableBase
+    }
+  };
 }
 
 export function createEmptyQuoteItem(service) {
@@ -116,4 +150,3 @@ export function createEmptyQuoteItem(service) {
     includesStrategy: false
   };
 }
-

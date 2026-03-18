@@ -317,33 +317,67 @@ export const api = {
       () => localApi.deleteService(id)
     ),
   createQuote: async (payload) => {
+    console.log("QUOTE SAVE START", {
+      mode: hasSupabaseConfig && supabase ? "supabase-first" : "local",
+      items: Array.isArray(payload?.items) ? payload.items.length : 0,
+      clientId: payload?.clientId || payload?.clientSnapshot?.id || null,
+      discountType: payload?.discountType || null,
+      discountValue: Number(payload?.discountValue ?? 0),
+      discountAmount: Number(payload?.totals?.discountAmount ?? payload?.totals?.discount ?? 0),
+      subtotal: Number(payload?.totals?.subtotal ?? 0),
+      taxes: Number(payload?.totals?.taxes ?? 0),
+      total: Number(payload?.totals?.total ?? 0)
+    });
+
     if (hasSupabaseConfig && supabase) {
       try {
         const remoteQuote = await createRemoteQuote(payload);
+        if (!remoteQuote) {
+          setQuotesDataSource("LocalStorage Fallback");
+          const localQuote = await localApi.createQuote(payload);
+          console.log("QUOTE SAVE SUCCESS", { source: "LocalStorage Fallback", quoteId: localQuote?.id || null });
+          return localQuote;
+        }
+
+        if (!remoteQuote.id) {
+          throw new Error("No se recibió la cotización creada desde Supabase.");
+        }
+
         const current = readLocalStore();
         syncLocalQuotes([remoteQuote, ...current.quotes.filter((quote) => quote.id !== remoteQuote.id)]);
         setQuotesDataSource("Supabase");
+        console.log("QUOTE SAVE SUCCESS", { source: "Supabase", quoteId: remoteQuote.id });
         return remoteQuote;
-      } catch (_error) {
-        setQuotesDataSource("LocalStorage Fallback");
-        return localApi.createQuote(payload);
+      } catch (error) {
+        console.error("QUOTE SAVE FAILED", error);
+        setQuotesDataSource("Supabase");
+        throw error;
       }
     }
 
     setQuotesDataSource("LocalStorage Fallback");
-    return localApi.createQuote(payload);
+    const localQuote = await localApi.createQuote(payload);
+    console.log("QUOTE SAVE SUCCESS", { source: "LocalStorage Fallback", quoteId: localQuote?.id || null });
+    return localQuote;
   },
   updateQuote: async (id, payload) => {
     if (hasSupabaseConfig && supabase) {
       try {
         const remoteQuote = await updateRemoteQuote(id, payload);
+        if (!remoteQuote) {
+          setQuotesDataSource("LocalStorage Fallback");
+          return localApi.updateQuote(id, payload);
+        }
+        if (!remoteQuote.id) {
+          throw new Error("No se recibió la cotización actualizada desde Supabase.");
+        }
         const current = readLocalStore();
         syncLocalQuotes(current.quotes.map((quote) => (quote.id === id ? remoteQuote : quote)));
         setQuotesDataSource("Supabase");
         return remoteQuote;
-      } catch (_error) {
-        setQuotesDataSource("LocalStorage Fallback");
-        return localApi.updateQuote(id, payload);
+      } catch (error) {
+        setQuotesDataSource("Supabase");
+        throw error;
       }
     }
 
@@ -446,6 +480,8 @@ export const api = {
     return localSettings;
   }
 };
+
+
 
 
 
