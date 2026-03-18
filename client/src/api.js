@@ -1,7 +1,7 @@
 ﻿import { localApi, readLocalStore, syncLocalClients, syncLocalInvoices, syncLocalPayments, syncLocalQuotes, syncLocalSettings } from "./utils/localStore";
 import { createRemoteClient, deleteRemoteClient, loadRemoteClients, updateRemoteClient } from "./utils/clientsRemote";
 import { createRemoteQuote, deleteRemoteQuote, loadRemoteQuotes, migrateLocalQuotesToRemote, updateRemoteQuote } from "./utils/quotesRemote";
-import { createRemoteInvoice, loadRemoteInvoices, loadRemotePayments, migrateLocalInvoicesToRemote, migrateLocalPaymentsToRemote, updateRemoteInvoice } from "./utils/invoicesPaymentsRemote";
+import { createRemoteInvoice, loadRemoteInvoiceByQuoteId, loadRemoteInvoices, loadRemotePayments, migrateLocalInvoicesToRemote, migrateLocalPaymentsToRemote, updateRemoteInvoice } from "./utils/invoicesPaymentsRemote";
 import { loadRemoteStudioSettings, saveRemoteStudioSettings } from "./utils/studioSettingsRemote";
 import { hasSupabaseConfig, supabase } from "./utils/supabaseClient";
 
@@ -390,17 +390,31 @@ export const api = {
 
         const relatedInvoice = current.invoices.find((invoice) => invoice.quoteId === id);
         if (relatedInvoice) {
-          console.log("QUOTE INVOICE SYNC START", { quoteId: id, invoiceId: relatedInvoice.id });
-          const invoiceResult = await updateRemoteInvoice(relatedInvoice.id, buildInvoiceSyncPayloadFromQuote(relatedInvoice, remoteQuote));
+          const remoteInvoice = await loadRemoteInvoiceByQuoteId(id);
+          const targetInvoice = remoteInvoice || relatedInvoice;
+
+          console.log("QUOTE INVOICE SYNC START", {
+            quoteId: id,
+            localInvoiceId: relatedInvoice.id,
+            remoteInvoiceId: remoteInvoice?.id || null,
+            invoiceQuery: "invoices.eq(quote_id, quoteId)",
+            expectedIdType: "uuid"
+          });
+
+          if (!targetInvoice?.id) {
+            throw new Error("La cotización se actualizó, pero no se encontró la factura vinculada en Supabase.");
+          }
+
+          const invoiceResult = await updateRemoteInvoice(targetInvoice.id, buildInvoiceSyncPayloadFromQuote(targetInvoice, remoteQuote));
           if (!invoiceResult?.invoice?.id) {
             throw new Error("La cotización se actualizó, pero la factura vinculada no pudo sincronizarse.");
           }
 
-          syncLocalInvoices(current.invoices.map((invoice) => (invoice.id === relatedInvoice.id ? invoiceResult.invoice : invoice)));
+          syncLocalInvoices(current.invoices.map((invoice) => (invoice.quoteId === id ? invoiceResult.invoice : invoice)));
           if (invoiceResult.payment) {
             syncLocalPayments([invoiceResult.payment, ...current.payments.filter((payment) => payment.id !== invoiceResult.payment.id)]);
           }
-          console.log("QUOTE INVOICE SYNC SUCCESS", { quoteId: id, invoiceId: relatedInvoice.id });
+          console.log("QUOTE INVOICE SYNC SUCCESS", { quoteId: id, invoiceId: invoiceResult.invoice.id });
         }
 
         setQuotesDataSource("Supabase");
@@ -511,6 +525,7 @@ export const api = {
     return localSettings;
   }
 };
+
 
 
 

@@ -163,6 +163,31 @@ function createPaymentFromInvoice(invoice) {
   };
 }
 
+export async function loadRemoteInvoiceByQuoteId(quoteId) {
+  if (!hasSupabaseConfig || !supabase || !invoicesTableAvailable || !quoteId) {
+    return null;
+  }
+
+  console.log("SUPABASE INVOICE LOOKUP BY QUOTE", { quoteId, expectedColumnType: "uuid" });
+
+  const { data, error } = await supabase
+    .from("invoices")
+    .select("*")
+    .eq("quote_id", quoteId)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    if (isMissingTableError(error)) {
+      invoicesTableAvailable = false;
+      return null;
+    }
+    throw new Error(error.message || "No se pudo localizar la factura asociada a la cotización");
+  }
+
+  return normalizeRemoteInvoice(data);
+}
+
 export async function loadRemoteInvoices() {
   if (!hasSupabaseConfig || !supabase || !invoicesTableAvailable) {
     return null;
@@ -388,6 +413,7 @@ export async function migrateLocalPaymentsToRemote(localPayments, references = {
 
   return Array.isArray(data) ? data.map(normalizeRemotePayment).filter(Boolean) : [];
 }
+
 
 
 
