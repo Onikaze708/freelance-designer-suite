@@ -346,9 +346,39 @@ export const localApi = {
   },
   updateQuote(id, payload) {
     const saved = updateLocalStore((store) => {
-      store.quotes = store.quotes.map((quote) =>
-        quote.id === id ? withTimestamps({ ...quote, ...payload }, quote) : quote
-      );
+      let updatedQuote = null;
+      store.quotes = store.quotes.map((quote) => {
+        if (quote.id !== id) {
+          return quote;
+        }
+
+        updatedQuote = withTimestamps({ ...quote, ...payload }, quote);
+        return updatedQuote;
+      });
+
+      if (updatedQuote) {
+        store.invoices = store.invoices.map((invoice) => {
+          if (invoice.quoteId !== id) {
+            return invoice;
+          }
+
+          return withTimestamps({
+            ...invoice,
+            clientId: updatedQuote.clientId,
+            clientSnapshot: updatedQuote.clientSnapshot,
+            items: updatedQuote.items,
+            totals: updatedQuote.totals,
+            notes: updatedQuote.notes,
+            paymentTerms: updatedQuote.paymentTerms,
+            deliveryEstimate: updatedQuote.deliveryEstimate,
+            discountType: updatedQuote.discountType,
+            discountValue: updatedQuote.discountValue,
+            applyTax: updatedQuote.applyTax,
+            taxRate: updatedQuote.taxRate
+          }, invoice);
+        });
+      }
+
       return store;
     });
     return Promise.resolve(saved.quotes.find((item) => item.id === id));
@@ -379,6 +409,11 @@ export const localApi = {
         totals: quote.totals,
         notes: quote.notes,
         paymentTerms: quote.paymentTerms,
+        deliveryEstimate: quote.deliveryEstimate,
+        discountType: quote.discountType,
+        discountValue: quote.discountValue,
+        applyTax: quote.applyTax,
+        taxRate: quote.taxRate,
         paymentMethod: "PayPal",
         paypalLink: payload?.paypalLink || store.settings.paypalLink || "",
         status: "draft"
@@ -423,5 +458,6 @@ export const localApi = {
     return Promise.resolve(saved.settings);
   }
 };
+
 
 

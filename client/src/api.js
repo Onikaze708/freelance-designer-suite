@@ -75,6 +75,23 @@ function enableLocalMode() {
   persistLocalModePreference(true);
 }
 
+function buildInvoiceSyncPayloadFromQuote(invoice, quote) {
+  return {
+    ...invoice,
+    quoteId: quote.id,
+    clientId: quote.clientId,
+    clientSnapshot: quote.clientSnapshot,
+    items: quote.items,
+    totals: quote.totals,
+    notes: quote.notes,
+    paymentTerms: quote.paymentTerms,
+    deliveryEstimate: quote.deliveryEstimate,
+    discountType: quote.discountType,
+    discountValue: quote.discountValue,
+    applyTax: quote.applyTax,
+    taxRate: quote.taxRate
+  };
+}
 function buildApiUrl(path) {
   return `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 }
@@ -367,11 +384,29 @@ export const api = {
         if (!remoteQuote.id) {
           throw new Error("No se recibió la cotización actualizada desde Supabase.");
         }
+
         const current = readLocalStore();
         syncLocalQuotes(current.quotes.map((quote) => (quote.id === id ? remoteQuote : quote)));
+
+        const relatedInvoice = current.invoices.find((invoice) => invoice.quoteId === id);
+        if (relatedInvoice) {
+          console.log("QUOTE INVOICE SYNC START", { quoteId: id, invoiceId: relatedInvoice.id });
+          const invoiceResult = await updateRemoteInvoice(relatedInvoice.id, buildInvoiceSyncPayloadFromQuote(relatedInvoice, remoteQuote));
+          if (!invoiceResult?.invoice?.id) {
+            throw new Error("La cotización se actualizó, pero la factura vinculada no pudo sincronizarse.");
+          }
+
+          syncLocalInvoices(current.invoices.map((invoice) => (invoice.id === relatedInvoice.id ? invoiceResult.invoice : invoice)));
+          if (invoiceResult.payment) {
+            syncLocalPayments([invoiceResult.payment, ...current.payments.filter((payment) => payment.id !== invoiceResult.payment.id)]);
+          }
+          console.log("QUOTE INVOICE SYNC SUCCESS", { quoteId: id, invoiceId: relatedInvoice.id });
+        }
+
         setQuotesDataSource("Supabase");
         return remoteQuote;
       } catch (error) {
+        console.error("QUOTE INVOICE SYNC FAILED", error);
         setQuotesDataSource("Supabase");
         throw error;
       }
@@ -476,6 +511,7 @@ export const api = {
     return localSettings;
   }
 };
+
 
 
 

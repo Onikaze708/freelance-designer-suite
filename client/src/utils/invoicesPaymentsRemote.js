@@ -78,6 +78,11 @@ export function normalizeRemoteInvoice(row) {
     },
     notes: row.notes || "",
     paymentTerms: row.payment_terms || "",
+    deliveryEstimate: row.delivery_time || "",
+    discountType: row.discount_type || "percent",
+    discountValue: normalizeNumber(row.discount_value),
+    applyTax: row.apply_tax ?? true,
+    taxRate: normalizeNumber(row.tax_rate),
     paymentMethod: row.payment_method || "PayPal",
     paypalLink: row.paypal_link || "",
     status: row.status || "draft",
@@ -125,6 +130,11 @@ function buildInvoicePayload(invoice, userId) {
     total: normalizeNumber(invoice.totals?.total),
     notes: invoice.notes || "",
     payment_terms: invoice.paymentTerms || "",
+    delivery_time: invoice.deliveryEstimate || "",
+    discount_type: invoice.discountType || "percent",
+    discount_value: normalizeNumber(invoice.discountValue),
+    apply_tax: invoice.applyTax ?? true,
+    tax_rate: normalizeNumber(invoice.taxRate),
     payment_method: invoice.paymentMethod || "PayPal",
     paypal_link: invoice.paypalLink || "",
     items: Array.isArray(invoice.items) ? invoice.items : [],
@@ -378,3 +388,7 @@ export async function migrateLocalPaymentsToRemote(localPayments, references = {
 
   return Array.isArray(data) ? data.map(normalizeRemotePayment).filter(Boolean) : [];
 }
+
+
+
+
