@@ -333,10 +333,7 @@ export const api = {
       try {
         const remoteQuote = await createRemoteQuote(payload);
         if (!remoteQuote) {
-          setQuotesDataSource("LocalStorage Fallback");
-          const localQuote = await localApi.createQuote(payload);
-          console.log("QUOTE SAVE SUCCESS", { source: "LocalStorage Fallback", quoteId: localQuote?.id || null });
-          return localQuote;
+          throw new Error("La tabla quotes no está disponible en Supabase o no respondió correctamente.");
         }
 
         if (!remoteQuote.id) {
@@ -365,8 +362,7 @@ export const api = {
       try {
         const remoteQuote = await updateRemoteQuote(id, payload);
         if (!remoteQuote) {
-          setQuotesDataSource("LocalStorage Fallback");
-          return localApi.updateQuote(id, payload);
+          throw new Error("La tabla quotes no está disponible en Supabase o no respondió correctamente.");
         }
         if (!remoteQuote.id) {
           throw new Error("No se recibió la cotización actualizada desde Supabase.");
@@ -392,9 +388,9 @@ export const api = {
         syncLocalQuotes(current.quotes.filter((quote) => quote.id !== id));
         setQuotesDataSource("Supabase");
         return remoteResult;
-      } catch (_error) {
-        setQuotesDataSource("LocalStorage Fallback");
-        return localApi.deleteQuote(id);
+      } catch (error) {
+        setQuotesDataSource("Supabase");
+        throw error;
       }
     }
 
@@ -431,9 +427,9 @@ export const api = {
         syncLocalInvoices([remoteInvoice, ...currentInvoices.filter((invoice) => invoice.id !== remoteInvoice.id)]);
         setQuotesDataSource("Supabase");
         return remoteInvoice;
-      } catch (_error) {
-        setQuotesDataSource("LocalStorage Fallback");
-        return localApi.convertQuoteToInvoice(id, payload);
+      } catch (error) {
+        setQuotesDataSource("Supabase");
+        throw error;
       }
     }
 
@@ -480,6 +476,7 @@ export const api = {
     return localSettings;
   }
 };
+
 
 
 

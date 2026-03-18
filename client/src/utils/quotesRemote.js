@@ -1,4 +1,4 @@
-import { hasSupabaseConfig, supabase } from "./supabaseClient";
+﻿import { hasSupabaseConfig, supabase } from "./supabaseClient";
 
 let quotesTableAvailable = true;
 
@@ -145,20 +145,31 @@ export async function createRemoteQuote(payload) {
 
   const userId = await getAuthenticatedUserId();
   if (!userId) {
-    throw new Error("No hay una sesi?n autenticada para crear cotizaciones");
+    throw new Error("No hay una sesión autenticada para crear cotizaciones");
   }
 
   const quoteNumber = payload.quoteNumber || (await generateNextQuoteNumber());
+  const insertPayload = buildQuotePayload({ ...payload, quoteNumber }, userId);
+
+  console.log("SUPABASE QUOTE INSERT PAYLOAD", insertPayload);
+
   const { data, error } = await supabase
     .from("quotes")
-    .insert(buildQuotePayload({ ...payload, quoteNumber }, userId))
+    .insert(insertPayload)
     .select()
     .single();
 
   if (error) {
-    throw new Error(error.message || "No se pudo crear la cotizaci?n en Supabase");
+    console.error("SUPABASE QUOTE INSERT ERROR", {
+      message: error.message || "",
+      code: error.code || "",
+      details: error.details || "",
+      hint: error.hint || ""
+    });
+    throw new Error(error.message || "No se pudo crear la cotización en Supabase");
   }
 
+  console.log("SUPABASE QUOTE INSERT RESPONSE", data);
   return normalizeRemoteQuote(data);
 }
 
@@ -212,3 +223,4 @@ export async function migrateLocalQuotesToRemote(localQuotes) {
 
   return Array.isArray(data) ? data.map(normalizeRemoteQuote).filter(Boolean) : [];
 }
+

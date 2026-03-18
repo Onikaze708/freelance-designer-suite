@@ -45,6 +45,10 @@ function clampNumber(value, minimum = 0, maximum = Number.POSITIVE_INFINITY) {
   return Math.min(Math.max(value, minimum), maximum);
 }
 
+function roundMoney(value) {
+  return Math.round((toSafeNumber(value) + Number.EPSILON) * 100) / 100;
+}
+
 export function getServiceBasePrice(service) {
   return toSafeNumber(service.base_price ?? service.basePrice ?? 0);
 }
@@ -86,14 +90,14 @@ export function calculateLineItem(item, service, settings) {
   return {
     ...item,
     quantity,
-    complexityFee,
-    urgencyFee,
-    revisionFee,
-    researchFee,
-    strategyFee,
-    unitBasePrice: getServiceBasePrice(service),
-    lineSubtotal: base,
-    total
+    complexityFee: roundMoney(complexityFee),
+    urgencyFee: roundMoney(urgencyFee),
+    revisionFee: roundMoney(revisionFee),
+    researchFee: roundMoney(researchFee),
+    strategyFee: roundMoney(strategyFee),
+    unitBasePrice: roundMoney(getServiceBasePrice(service)),
+    lineSubtotal: roundMoney(base),
+    total: roundMoney(total)
   };
 }
 
@@ -103,21 +107,21 @@ export function calculateQuoteTotals(items, services, settings, options) {
     return service ? { ...calculateLineItem(item, service, settings), serviceName: service.name } : item;
   });
 
-  const subtotal = enrichedItems.reduce((sum, item) => sum + toSafeNumber(item.lineSubtotal || 0), 0);
-  const extras = enrichedItems.reduce((sum, item) => {
+  const subtotal = roundMoney(enrichedItems.reduce((sum, item) => sum + toSafeNumber(item.lineSubtotal || 0), 0));
+  const extras = roundMoney(enrichedItems.reduce((sum, item) => {
     return sum + toSafeNumber(item.complexityFee || 0) + toSafeNumber(item.urgencyFee || 0) + toSafeNumber(item.revisionFee || 0) + toSafeNumber(item.researchFee || 0) + toSafeNumber(item.strategyFee || 0);
-  }, 0);
+  }, 0));
 
-  const grossTotal = Math.max(0, subtotal + extras);
+  const grossTotal = roundMoney(Math.max(0, subtotal + extras));
   const discountType = options?.discountType === "fixed" ? "fixed" : "percent";
   const rawDiscountValue = clampNumber(toSafeNumber(options?.discountValue), 0);
   const normalizedDiscountValue = discountType === "percent" ? clampNumber(rawDiscountValue, 0, 100) : rawDiscountValue;
   const rawDiscountAmount = discountType === "percent" ? grossTotal * (normalizedDiscountValue / 100) : normalizedDiscountValue;
-  const discount = clampNumber(rawDiscountAmount, 0, grossTotal);
-  const taxableBase = clampNumber(grossTotal - discount, 0);
+  const discount = roundMoney(clampNumber(rawDiscountAmount, 0, grossTotal));
+  const taxableBase = roundMoney(clampNumber(grossTotal - discount, 0));
   const taxRate = clampNumber(toSafeNumber(options?.taxRate), 0);
-  const taxes = options?.applyTax ? Math.max(0, taxableBase * (taxRate / 100)) : 0;
-  const total = Math.max(0, taxableBase + taxes);
+  const taxes = options?.applyTax ? roundMoney(Math.max(0, taxableBase * (taxRate / 100))) : 0;
+  const total = roundMoney(Math.max(0, taxableBase + taxes));
 
   return {
     items: enrichedItems,
@@ -150,3 +154,4 @@ export function createEmptyQuoteItem(service) {
     includesStrategy: false
   };
 }
+

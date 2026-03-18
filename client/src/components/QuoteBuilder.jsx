@@ -2,9 +2,13 @@
 import { COMPLEXITY_OPTIONS, URGENCY_OPTIONS, calculateQuoteTotals, createEmptyQuoteItem, formatCurrency, getServiceBasePrice, serviceHasOption } from "../utils/calculations";
 import { QuotePreview } from "./QuotePreview";
 
+const FALLBACK_QUOTE_CLIENT_ID = "__quote_client__";
+
 function createInitialState(activeQuote, settings, clients) {
+  const hydratedClientId = activeQuote?.clientId || activeQuote?.clientSnapshot?.id || (activeQuote?.clientSnapshot ? FALLBACK_QUOTE_CLIENT_ID : clients[0]?.id) || "";
+
   return {
-    selectedClientId: activeQuote?.clientId || clients[0]?.id || "",
+    selectedClientId: hydratedClientId,
     date: activeQuote?.date || new Date().toISOString().slice(0, 10),
     discountType: activeQuote?.discountType || "percent",
     discountValue: Number.isFinite(Number(activeQuote?.discountValue)) ? Number(activeQuote.discountValue) : 0,
@@ -155,7 +159,26 @@ export function QuoteBuilder({ clients, services, settings, activeQuote, onSaveQ
     setSaveError("");
   }, [activeQuote, settings, clients]);
 
-  const selectedClient = clients.find((client) => client.id === formState.selectedClientId);
+  const clientOptions = useMemo(() => {
+    const fallbackClientId = activeQuote?.clientId || activeQuote?.clientSnapshot?.id || FALLBACK_QUOTE_CLIENT_ID;
+    const hasQuoteClientInList = clients.some((client) => client.id === fallbackClientId);
+
+    if (activeQuote?.clientSnapshot && !hasQuoteClientInList) {
+      return [
+        {
+          ...activeQuote.clientSnapshot,
+          id: fallbackClientId,
+          businessName: activeQuote.clientSnapshot.businessName || activeQuote.clientSnapshot.name || activeQuote.clientName || "",
+          name: activeQuote.clientSnapshot.name || activeQuote.clientSnapshot.businessName || activeQuote.clientName || ""
+        },
+        ...clients
+      ];
+    }
+
+    return clients;
+  }, [activeQuote, clients]);
+
+  const selectedClient = clientOptions.find((client) => client.id === formState.selectedClientId) || null;
   const calculated = useMemo(
     () =>
       calculateQuoteTotals(formState.items, services, settings, {
@@ -167,13 +190,15 @@ export function QuoteBuilder({ clients, services, settings, activeQuote, onSaveQ
     [formState, services, settings]
   );
 
+  const persistedClientId = selectedClient?.id === FALLBACK_QUOTE_CLIENT_ID ? activeQuote?.clientId || activeQuote?.clientSnapshot?.id || null : selectedClient?.id || formState.selectedClientId || null;
+
   const quotePreview = selectedClient
     ? {
         id: activeQuote?.id,
         quoteNumber: activeQuote?.quoteNumber,
         status: activeQuote?.status || "draft",
-        clientId: formState.selectedClientId,
-        clientSnapshot: selectedClient,
+        clientId: persistedClientId,
+        clientSnapshot: { ...selectedClient, id: persistedClientId },
         date: formState.date,
         discountType: formState.discountType,
         discountValue: formState.discountValue,
@@ -268,7 +293,7 @@ export function QuoteBuilder({ clients, services, settings, activeQuote, onSaveQ
             <div>
               <label className="label">Cliente</label>
               <select className="input" value={formState.selectedClientId} onChange={(event) => updateState({ selectedClientId: event.target.value })}>
-                {clients.map((client) => (
+                {clientOptions.map((client) => (
                   <option key={client.id} value={client.id}>
                     {client.businessName || client.name}
                   </option>
@@ -375,5 +400,6 @@ export function QuoteBuilder({ clients, services, settings, activeQuote, onSaveQ
     </div>
   );
 }
+
 
 
