@@ -14,6 +14,10 @@ function normalizeNumber(value) {
   return Number.isFinite(next) ? next : 0;
 }
 
+export function isUuid(value) {
+  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 async function getAuthenticatedUserId() {
   const { data, error } = await supabase.auth.getUser();
   if (error) {
@@ -55,8 +59,12 @@ export function normalizeRemoteInvoice(row) {
     return null;
   }
 
+  const dbId = String(row.id);
+
   return {
-    id: String(row.id),
+    id: dbId,
+    dbId,
+    uiInvoiceId: `invoice-row-${dbId}`,
     userId: row.user_id || null,
     invoiceNumber: row.invoice_number || "",
     quoteId: row.quote_id || null,
@@ -96,8 +104,12 @@ export function normalizeRemotePayment(row) {
     return null;
   }
 
+  const dbId = String(row.id);
+
   return {
-    id: String(row.id),
+    id: dbId,
+    dbId,
+    uiInvoiceId: `invoice-row-${dbId}`,
     userId: row.user_id || null,
     invoiceId: row.invoice_id || null,
     amount: normalizeNumber(row.amount),
@@ -168,7 +180,7 @@ export async function loadRemoteInvoiceByQuoteId(quoteId) {
     return null;
   }
 
-  console.log("SUPABASE INVOICE LOOKUP BY QUOTE", { quoteId, expectedColumnType: "uuid" });
+  console.log("SUPABASE INVOICE LOOKUP BY QUOTE", { quoteId, expectedColumnType: "uuid", query: "invoices.eq(quote_id, quoteId)" });
 
   const { data, error } = await supabase
     .from("invoices")
@@ -251,6 +263,13 @@ export async function updateRemoteInvoice(id, payload) {
     return null;
   }
 
+  console.log("SUPABASE INVOICE UPDATE START", { invoiceId: id, expectedColumnType: "uuid", query: "invoices.eq(id, invoiceId)" });
+
+  if (!isUuid(id)) {
+    console.error("INVALID SUPABASE INVOICE ID", { file: "invoicesPaymentsRemote.js", fn: "updateRemoteInvoice", invoiceId: id, expectedType: "uuid" });
+    throw new Error("El id real de la factura no es un UUID válido.");
+  }
+
   const { data: existingInvoice, error: existingError } = await supabase
     .from("invoices")
     .select("*")
@@ -261,16 +280,28 @@ export async function updateRemoteInvoice(id, payload) {
     throw new Error(existingError.message || "No se pudo cargar la factura para actualizarla");
   }
 
+  const invoicePayload = buildInvoicePayload(payload);
+  console.log("SUPABASE INVOICE UPDATE PAYLOAD", { invoiceId: id, payload: invoicePayload });
+
   const { data, error } = await supabase
     .from("invoices")
-    .update(buildInvoicePayload(payload))
+    .update(invoicePayload)
     .eq("id", id)
     .select()
     .single();
 
   if (error) {
+    console.error("SUPABASE INVOICE UPDATE ERROR", {
+      invoiceId: id,
+      message: error.message || "",
+      code: error.code || "",
+      details: error.details || "",
+      hint: error.hint || ""
+    });
     throw new Error(error.message || "No se pudo actualizar la factura en Supabase");
   }
+
+  console.log("SUPABASE INVOICE UPDATE RESPONSE", { invoiceId: id, data });
 
   let createdPayment = null;
   if (existingInvoice.status !== "paid" && data.status === "paid") {
@@ -413,6 +444,7 @@ export async function migrateLocalPaymentsToRemote(localPayments, references = {
 
   return Array.isArray(data) ? data.map(normalizeRemotePayment).filter(Boolean) : [];
 }
+
 
 
 

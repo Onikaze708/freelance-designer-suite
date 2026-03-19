@@ -1,7 +1,7 @@
 ﻿import { localApi, readLocalStore, syncLocalClients, syncLocalInvoices, syncLocalPayments, syncLocalQuotes, syncLocalSettings } from "./utils/localStore";
 import { createRemoteClient, deleteRemoteClient, loadRemoteClients, updateRemoteClient } from "./utils/clientsRemote";
 import { createRemoteQuote, deleteRemoteQuote, loadRemoteQuotes, migrateLocalQuotesToRemote, updateRemoteQuote } from "./utils/quotesRemote";
-import { createRemoteInvoice, loadRemoteInvoiceByQuoteId, loadRemoteInvoices, loadRemotePayments, migrateLocalInvoicesToRemote, migrateLocalPaymentsToRemote, updateRemoteInvoice } from "./utils/invoicesPaymentsRemote";
+import { createRemoteInvoice, isUuid, loadRemoteInvoiceByQuoteId, loadRemoteInvoices, loadRemotePayments, migrateLocalInvoicesToRemote, migrateLocalPaymentsToRemote, updateRemoteInvoice } from "./utils/invoicesPaymentsRemote";
 import { loadRemoteStudioSettings, saveRemoteStudioSettings } from "./utils/studioSettingsRemote";
 import { hasSupabaseConfig, supabase } from "./utils/supabaseClient";
 
@@ -391,21 +391,32 @@ export const api = {
         const relatedInvoice = current.invoices.find((invoice) => invoice.quoteId === id);
         if (relatedInvoice) {
           const remoteInvoice = await loadRemoteInvoiceByQuoteId(id);
-          const targetInvoice = remoteInvoice || relatedInvoice;
+          const targetInvoiceDbId = remoteInvoice?.dbId || remoteInvoice?.id || (isUuid(relatedInvoice?.dbId) ? relatedInvoice.dbId : null) || (isUuid(relatedInvoice?.id) ? relatedInvoice.id : null);
 
           console.log("QUOTE INVOICE SYNC START", {
             quoteId: id,
             localInvoiceId: relatedInvoice.id,
-            remoteInvoiceId: remoteInvoice?.id || null,
-            invoiceQuery: "invoices.eq(quote_id, quoteId)",
+            localInvoiceDbId: relatedInvoice.dbId || null,
+            remoteInvoiceId: remoteInvoice?.dbId || remoteInvoice?.id || null,
+            mode: targetInvoiceDbId ? "update-by-id" : "lookup-by-quote_id",
+            invoiceQuery: targetInvoiceDbId ? "invoices.eq(id, invoiceId)" : "invoices.eq(quote_id, quoteId)",
             expectedIdType: "uuid"
           });
 
-          if (!targetInvoice?.id) {
-            throw new Error("La cotización se actualizó, pero no se encontró la factura vinculada en Supabase.");
+          if (!targetInvoiceDbId) {
+            console.error("INVALID INVOICE UUID FOR QUOTE SYNC", {
+              file: "api.js",
+              fn: "updateQuote",
+              quoteId: id,
+              localInvoiceId: relatedInvoice?.id || null,
+              localInvoiceDbId: relatedInvoice?.dbId || null,
+              expectedType: "uuid"
+            });
+            throw new Error("La factura vinculada no tiene un UUID real válido para sincronizarse con Supabase.");
           }
 
-          const invoiceResult = await updateRemoteInvoice(targetInvoice.id, buildInvoiceSyncPayloadFromQuote(targetInvoice, remoteQuote));
+          const targetInvoice = remoteInvoice || relatedInvoice;
+          const invoiceResult = await updateRemoteInvoice(targetInvoiceDbId, buildInvoiceSyncPayloadFromQuote(targetInvoice, remoteQuote));
           if (!invoiceResult?.invoice?.id) {
             throw new Error("La cotización se actualizó, pero la factura vinculada no pudo sincronizarse.");
           }
@@ -414,7 +425,7 @@ export const api = {
           if (invoiceResult.payment) {
             syncLocalPayments([invoiceResult.payment, ...current.payments.filter((payment) => payment.id !== invoiceResult.payment.id)]);
           }
-          console.log("QUOTE INVOICE SYNC SUCCESS", { quoteId: id, invoiceId: invoiceResult.invoice.id });
+          console.log("QUOTE INVOICE SYNC SUCCESS", { quoteId: id, invoiceId: invoiceResult.invoice.dbId || invoiceResult.invoice.id });
         }
 
         setQuotesDataSource("Supabase");
@@ -525,6 +536,7 @@ export const api = {
     return localSettings;
   }
 };
+
 
 
 

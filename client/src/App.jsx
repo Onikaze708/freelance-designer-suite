@@ -52,7 +52,7 @@ function buildRecentActivity(data) {
   }));
 
   const invoiceItems = data.invoices.map((invoice) => ({
-    id: `invoice-${invoice.id}`,
+    id: invoice.uiInvoiceId || `invoice-ui-${invoice.dbId || invoice.id}`,
     type: "Factura",
     title: invoice.invoiceNumber || "Factura",
     subtitle: invoice.clientSnapshot?.businessName || invoice.clientSnapshot?.name || "Sin cliente",
@@ -548,19 +548,27 @@ function QuotesSection({
   );
 }
 
+function getInvoiceUiId(invoice) {
+  return invoice?.uiInvoiceId || `invoice-ui-${invoice?.dbId || invoice?.id || "unknown"}`;
+}
+
+function getInvoiceDbId(invoice) {
+  return invoice?.dbId || invoice?.id || null;
+}
+
 function InvoicesSection({ data, onUpdateInvoice }) {
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState(data.invoices[0]?.id || "");
-  const selectedInvoice = data.invoices.find((invoice) => invoice.id === selectedInvoiceId) || data.invoices[0];
+  const [selectedInvoiceUiId, setSelectedInvoiceUiId] = useState(getInvoiceUiId(data.invoices[0]));
+  const selectedInvoice = data.invoices.find((invoice) => getInvoiceUiId(invoice) === selectedInvoiceUiId) || data.invoices[0];
 
   function openInvoiceEmailDraft(invoice) {
     window.location.href = createInvoiceEmailLink(invoice, data.settings);
   }
 
   useEffect(() => {
-    if (!selectedInvoiceId && data.invoices[0]?.id) {
-      setSelectedInvoiceId(data.invoices[0].id);
+    if (!selectedInvoiceUiId && data.invoices[0]) {
+      setSelectedInvoiceUiId(getInvoiceUiId(data.invoices[0]));
     }
-  }, [data.invoices, selectedInvoiceId]);
+  }, [data.invoices, selectedInvoiceUiId]);
 
   return (
     <div className="space-y-4">
@@ -585,9 +593,9 @@ function InvoicesSection({ data, onUpdateInvoice }) {
               <tbody>
                 {data.invoices.map((invoice) => (
                   <tr
-                    key={invoice.id}
-                    className={`cursor-pointer border-t border-slate-100 ${selectedInvoice?.id === invoice.id ? "bg-mist/70" : ""}`}
-                    onClick={() => setSelectedInvoiceId(invoice.id)}
+                    key={getInvoiceUiId(invoice)}
+                    className={`cursor-pointer border-t border-slate-100 ${getInvoiceUiId(selectedInvoice) === getInvoiceUiId(invoice) ? "bg-mist/70" : ""}`}
+                    onClick={() => setSelectedInvoiceUiId(getInvoiceUiId(invoice))}
                   >
                     <td className="px-4 py-3 font-semibold text-ink">{invoice.invoiceNumber}</td>
                     <td className="px-4 py-3">{invoice.clientSnapshot?.businessName || invoice.clientSnapshot?.name}</td>
@@ -607,7 +615,7 @@ function InvoicesSection({ data, onUpdateInvoice }) {
               onSubmit={(event) => {
                 event.preventDefault();
                 const formData = new FormData(event.currentTarget);
-                onUpdateInvoice(selectedInvoice.id, {
+                onUpdateInvoice(getInvoiceDbId(selectedInvoice), {
                   status: formData.get("status"),
                   paymentMethod: formData.get("paymentMethod"),
                   paypalLink: formData.get("paypalLink"),
@@ -671,7 +679,6 @@ function InvoicesSection({ data, onUpdateInvoice }) {
     </div>
   );
 }
-
 function PaymentsSection({ data }) {
   return (
     <div className="space-y-4">
@@ -695,7 +702,7 @@ function PaymentsSection({ data }) {
             </thead>
             <tbody>
               {data.payments.map((payment) => {
-                const invoice = data.invoices.find((entry) => entry.id === payment.invoiceId);
+                const invoice = data.invoices.find((entry) => getInvoiceDbId(entry) === payment.invoiceId || entry.id === payment.invoiceId);
                 const client = data.clients.find((entry) => entry.id === (payment.clientId || invoice?.clientId));
                 return (
                   <tr key={payment.id} className="border-t border-slate-100">
@@ -1003,6 +1010,8 @@ export default function App() {
     </Layout>
   );
 }
+
+
 
 
 
