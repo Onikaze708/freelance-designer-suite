@@ -44,7 +44,7 @@ async function generateNextInvoiceNumber() {
   const year = new Date().getFullYear();
   const { data, error } = await supabase.from("invoices").select("invoice_number");
   if (error) {
-    throw new Error(error.message || "No se pudo calcular el prÃƒÂ³ximo nÃƒÂºmero de factura");
+    throw new Error(error.message || "No se pudo calcular el prÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ximo nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âºmero de factura");
   }
 
   const maxIndex = (data || []).reduce((highest, row) => {
@@ -148,6 +148,24 @@ const INVOICE_DB_COLUMNS = [
   "updated_at"
 ];
 
+function toUuidOrNull(value, context) {
+  if (value == null || value === "") {
+    return null;
+  }
+
+  const normalized = String(value).trim();
+  if (isUuid(normalized)) {
+    return normalized;
+  }
+
+  console.warn("INVALID UUID SANITIZED", {
+    context,
+    receivedValue: value,
+    sanitizedTo: null
+  });
+  return null;
+}
+
 function sanitizeInvoicePayload(payload) {
   return INVOICE_DB_COLUMNS.reduce((accumulator, column) => {
     if (payload[column] !== undefined) {
@@ -159,15 +177,15 @@ function sanitizeInvoicePayload(payload) {
 
 function buildInvoicePayload(invoice, userId) {
   const payload = {
-    ...(userId ? { user_id: userId } : {}),
+    ...(userId ? { user_id: toUuidOrNull(userId, "invoices.user_id") } : {}),
     invoice_number: invoice.invoiceNumber || undefined,
-    quote_id: invoice.quoteId || null,
+    quote_id: toUuidOrNull(invoice.quoteId, "invoices.quote_id"),
     client_name:
       invoice.clientSnapshot?.businessName ||
       invoice.clientSnapshot?.name ||
       invoice.clientName ||
       "",
-    client_id: invoice.clientId || invoice.clientSnapshot?.id || null,
+    client_id: toUuidOrNull(invoice.clientId || invoice.clientSnapshot?.id, "invoices.client_id"),
     client_snapshot: invoice.clientSnapshot || null,
     date: invoice.issueDate || invoice.date || new Date().toISOString().slice(0, 10),
     due_date: invoice.dueDate || invoice.issueDate || invoice.date || null,
@@ -195,8 +213,8 @@ function buildInvoicePayload(invoice, userId) {
 
 function buildPaymentPayload(payment, userId) {
   return {
-    ...(userId ? { user_id: userId } : {}),
-    invoice_id: payment.invoiceId,
+    ...(userId ? { user_id: toUuidOrNull(userId, "payments.user_id") } : {}),
+    invoice_id: toUuidOrNull(payment.invoiceId, "payments.invoice_id"),
     amount: normalizeNumber(payment.amount),
     method: payment.method || "PayPal",
     date: payment.paidAt || payment.date || new Date().toISOString(),
@@ -256,7 +274,7 @@ export async function createRemoteInvoice(payload) {
 
   const userId = await getAuthenticatedUserId();
   if (!userId) {
-    throw new Error("No hay una sesiÃ³n autenticada para crear facturas");
+    throw new Error("No hay una sesiÃƒÆ’Ã‚Â³n autenticada para crear facturas");
   }
 
   const invoiceNumber = payload.invoiceNumber || (await generateNextInvoiceNumber());
@@ -267,7 +285,7 @@ export async function createRemoteInvoice(payload) {
     invoiceNumber,
     mode: "insert"
   });
-  console.log("SUPABASE INVOICE INSERT PAYLOAD", { payload: invoicePayload, columns: Object.keys(invoicePayload) });
+  console.log("SUPABASE INVOICE INSERT PAYLOAD", { payload: invoicePayload, columns: Object.keys(invoicePayload), uuidFields: { user_id: invoicePayload.user_id ?? null, quote_id: invoicePayload.quote_id ?? null, client_id: invoicePayload.client_id ?? null } });
 
   const { data, error } = await supabase
     .from("invoices")
@@ -305,7 +323,7 @@ export async function updateRemoteInvoice(id, payload) {
 
   if (!isUuid(id)) {
     console.error("INVALID SUPABASE INVOICE ID", { file: "invoicesPaymentsRemote.js", fn: "updateRemoteInvoice", invoiceId: id, expectedType: "uuid" });
-    throw new Error("El id real de la factura no es un UUID vÃƒÂ¡lido.");
+    throw new Error("El id real de la factura no es un UUID vÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡lido.");
   }
 
   const { data: existingInvoice, error: existingError } = await supabase
@@ -319,7 +337,7 @@ export async function updateRemoteInvoice(id, payload) {
   }
 
   const invoicePayload = buildInvoicePayload(payload);
-  console.log("SUPABASE INVOICE UPDATE PAYLOAD", { invoiceId: id, payload: invoicePayload, columns: Object.keys(invoicePayload) });
+  console.log("SUPABASE INVOICE UPDATE PAYLOAD", { invoiceId: id, payload: invoicePayload, columns: Object.keys(invoicePayload), uuidFields: { user_id: invoicePayload.user_id ?? null, quote_id: invoicePayload.quote_id ?? null, client_id: invoicePayload.client_id ?? null } });
 
   const { data, error } = await supabase
     .from("invoices")
@@ -384,7 +402,7 @@ export async function createRemotePayment(payload) {
 
   const userId = await getAuthenticatedUserId();
   if (!userId) {
-    throw new Error("No hay una sesiÃƒÂ³n autenticada para registrar pagos");
+    throw new Error("No hay una sesiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n autenticada para registrar pagos");
   }
 
   const { data, error } = await supabase
@@ -407,7 +425,7 @@ export async function migrateLocalInvoicesToRemote(localInvoices, references = {
 
   const userId = await getAuthenticatedUserId();
   if (!userId) {
-    throw new Error("No hay una sesiÃƒÂ³n autenticada para migrar facturas");
+    throw new Error("No hay una sesiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n autenticada para migrar facturas");
   }
 
   const localQuotes = Array.isArray(references.localQuotes) ? references.localQuotes : [];
@@ -447,7 +465,7 @@ export async function migrateLocalPaymentsToRemote(localPayments, references = {
 
   const userId = await getAuthenticatedUserId();
   if (!userId) {
-    throw new Error("No hay una sesiÃƒÂ³n autenticada para migrar pagos");
+    throw new Error("No hay una sesiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n autenticada para migrar pagos");
   }
 
   const localInvoices = Array.isArray(references.localInvoices) ? references.localInvoices : [];
