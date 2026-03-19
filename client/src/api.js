@@ -1,7 +1,7 @@
-﻿import { localApi, readLocalStore, syncLocalClients, syncLocalInvoices, syncLocalPayments, syncLocalQuotes, syncLocalSettings } from "./utils/localStore";
+import { localApi, readLocalStore, syncLocalClients, syncLocalInvoices, syncLocalPayments, syncLocalQuotes, syncLocalSettings } from "./utils/localStore";
 import { createRemoteClient, deleteRemoteClient, loadRemoteClients, updateRemoteClient } from "./utils/clientsRemote";
 import { createRemoteQuote, deleteRemoteQuote, loadRemoteQuotes, migrateLocalQuotesToRemote, updateRemoteQuote } from "./utils/quotesRemote";
-import { createRemoteInvoice, isUuid, loadRemoteInvoiceByQuoteId, loadRemoteInvoices, loadRemotePayments, migrateLocalInvoicesToRemote, migrateLocalPaymentsToRemote, updateRemoteInvoice } from "./utils/invoicesPaymentsRemote";
+import { createRemoteInvoice, loadRemoteInvoices, loadRemotePayments, migrateLocalInvoicesToRemote, migrateLocalPaymentsToRemote, updateRemoteInvoice, updateRemoteInvoiceByQuoteId } from "./utils/invoicesPaymentsRemote";
 import { loadRemoteStudioSettings, saveRemoteStudioSettings } from "./utils/studioSettingsRemote";
 import { hasSupabaseConfig, supabase } from "./utils/supabaseClient";
 
@@ -233,12 +233,12 @@ async function hydrateInvoicesAndPayments(appData, originalLocalData) {
 
 export async function signInWithPassword({ email, password }) {
   if (!hasSupabaseConfig || !supabase) {
-    throw new Error("Supabase Auth no está configurado.");
+    throw new Error("Supabase Auth no estÃ¡ configurado.");
   }
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
-    throw new Error(error.message || "No se pudo iniciar sesión.");
+    throw new Error(error.message || "No se pudo iniciar sesiÃ³n.");
   }
 }
 
@@ -249,7 +249,7 @@ export async function signOut() {
 
   const { error } = await supabase.auth.signOut();
   if (error) {
-    throw new Error(error.message || "No se pudo cerrar sesión.");
+    throw new Error(error.message || "No se pudo cerrar sesiÃ³n.");
   }
 }
 
@@ -260,7 +260,7 @@ export async function getCurrentSession() {
 
   const { data, error } = await supabase.auth.getSession();
   if (error) {
-    throw new Error(error.message || "No se pudo obtener la sesión.");
+    throw new Error(error.message || "No se pudo obtener la sesiÃ³n.");
   }
 
   return data.session;
@@ -350,11 +350,11 @@ export const api = {
       try {
         const remoteQuote = await createRemoteQuote(payload);
         if (!remoteQuote) {
-          throw new Error("La tabla quotes no está disponible en Supabase o no respondió correctamente.");
+          throw new Error("La tabla quotes no estÃ¡ disponible en Supabase o no respondiÃ³ correctamente.");
         }
 
         if (!remoteQuote.id) {
-          throw new Error("No se recibió la cotización creada desde Supabase.");
+          throw new Error("No se recibiÃ³ la cotizaciÃ³n creada desde Supabase.");
         }
 
         const current = readLocalStore();
@@ -379,53 +379,49 @@ export const api = {
       try {
         const remoteQuote = await updateRemoteQuote(id, payload);
         if (!remoteQuote) {
-          throw new Error("La tabla quotes no está disponible en Supabase o no respondió correctamente.");
+          throw new Error("La tabla quotes no estÃ¡ disponible en Supabase o no respondiÃ³ correctamente.");
         }
         if (!remoteQuote.id) {
-          throw new Error("No se recibió la cotización actualizada desde Supabase.");
+          throw new Error("No se recibiÃ³ la cotizaciÃ³n actualizada desde Supabase.");
         }
 
         const current = readLocalStore();
         syncLocalQuotes(current.quotes.map((quote) => (quote.id === id ? remoteQuote : quote)));
 
-        const relatedInvoice = current.invoices.find((invoice) => invoice.quoteId === id);
-        if (relatedInvoice) {
-          const remoteInvoice = await loadRemoteInvoiceByQuoteId(id);
-          const targetInvoiceDbId = remoteInvoice?.dbId || remoteInvoice?.id || (isUuid(relatedInvoice?.dbId) ? relatedInvoice.dbId : null) || (isUuid(relatedInvoice?.id) ? relatedInvoice.id : null);
+        console.log("QUOTE INVOICE SYNC START", {
+          quoteId: id,
+          lookupQuery: "invoices.eq(quote_id, quoteId)",
+          updateMethod: "lookup-by-quote_id"
+        });
 
-          console.log("QUOTE INVOICE SYNC START", {
+        const invoiceResult = await updateRemoteInvoiceByQuoteId(
+          id,
+          buildInvoiceSyncPayloadFromQuote(
+            current.invoices.find((invoice) => invoice.quoteId === id) || {},
+            remoteQuote
+          )
+        );
+
+        if (!invoiceResult?.invoice?.id) {
+          console.warn("QUOTE INVOICE SYNC WARNING", {
             quoteId: id,
-            localInvoiceId: relatedInvoice.id,
-            localInvoiceDbId: relatedInvoice.dbId || null,
-            remoteInvoiceId: remoteInvoice?.dbId || remoteInvoice?.id || null,
-            mode: targetInvoiceDbId ? "update-by-id" : "lookup-by-quote_id",
-            invoiceQuery: targetInvoiceDbId ? "invoices.eq(id, invoiceId)" : "invoices.eq(quote_id, quoteId)",
-            expectedIdType: "uuid"
+            reason: "No related invoice found in Supabase for this quote_id"
           });
-
-          if (!targetInvoiceDbId) {
-            console.error("INVALID INVOICE UUID FOR QUOTE SYNC", {
-              file: "api.js",
-              fn: "updateQuote",
-              quoteId: id,
-              localInvoiceId: relatedInvoice?.id || null,
-              localInvoiceDbId: relatedInvoice?.dbId || null,
-              expectedType: "uuid"
-            });
-            throw new Error("La factura vinculada no tiene un UUID real válido para sincronizarse con Supabase.");
-          }
-
-          const targetInvoice = remoteInvoice || relatedInvoice;
-          const invoiceResult = await updateRemoteInvoice(targetInvoiceDbId, buildInvoiceSyncPayloadFromQuote(targetInvoice, remoteQuote));
-          if (!invoiceResult?.invoice?.id) {
-            throw new Error("La cotización se actualizó, pero la factura vinculada no pudo sincronizarse.");
-          }
-
+          setQuotesDataSource("Supabase");
+          return {
+            ...remoteQuote,
+            syncWarning: "La cotización se actualizó correctamente, pero no había una factura vinculada para sincronizar."
+          };
+        } else {
           syncLocalInvoices(current.invoices.map((invoice) => (invoice.quoteId === id ? invoiceResult.invoice : invoice)));
           if (invoiceResult.payment) {
             syncLocalPayments([invoiceResult.payment, ...current.payments.filter((payment) => payment.id !== invoiceResult.payment.id)]);
           }
-          console.log("QUOTE INVOICE SYNC SUCCESS", { quoteId: id, invoiceId: invoiceResult.invoice.dbId || invoiceResult.invoice.id });
+          console.log("QUOTE INVOICE SYNC SUCCESS", {
+            quoteId: id,
+            dbInvoiceId: invoiceResult.invoice.dbId || invoiceResult.invoice.id,
+            updateMethod: "lookup-by-quote_id"
+          });
         }
 
         setQuotesDataSource("Supabase");
@@ -536,6 +532,7 @@ export const api = {
     return localSettings;
   }
 };
+
 
 
 

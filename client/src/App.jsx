@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api, getClientsDataSource, getCurrentSession, getQuotesDataSource, getStudioSettingsSource, hasSupabaseConfig, signInWithPassword, signOut, subscribeToAuthChanges } from "./api";
 import { Layout } from "./components/Layout";
 import { StatCard } from "./components/StatCard";
@@ -457,7 +457,7 @@ function QuotesSection({
       />
 
       {quoteFeedback?.message ? (
-        <div className={`rounded-2xl border px-4 py-3 text-sm ${quoteFeedback.type === "success" ? "border-emerald-100 bg-emerald-50 text-emerald-700" : "border-rose-100 bg-rose-50 text-rose-700"}`}>
+        <div className={`rounded-2xl border px-4 py-3 text-sm ${quoteFeedback.type === "success" ? "border-emerald-100 bg-emerald-50 text-emerald-700" : quoteFeedback.type === "warning" ? "border-amber-100 bg-amber-50 text-amber-700" : "border-rose-100 bg-rose-50 text-rose-700"}`}>
           {quoteFeedback.message}
         </div>
       ) : null}
@@ -844,7 +844,11 @@ export default function App() {
 
       setEditingQuote(null);
       await loadApp();
-      setQuoteFeedback({ type: "success", message: "Cotización guardada correctamente" });
+      setQuoteFeedback(
+        savedQuote?.syncWarning
+          ? { type: "warning", message: savedQuote.syncWarning }
+          : { type: "success", message: "Cotización guardada correctamente" }
+      );
       setActiveSection("quotes");
       return savedQuote;
     } catch (nextError) {

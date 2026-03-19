@@ -1,4 +1,4 @@
-﻿import { hasSupabaseConfig, supabase } from "./supabaseClient";
+import { hasSupabaseConfig, supabase } from "./supabaseClient";
 
 let invoicesTableAvailable = true;
 let paymentsTableAvailable = true;
@@ -198,6 +198,37 @@ export async function loadRemoteInvoiceByQuoteId(quoteId) {
   }
 
   return normalizeRemoteInvoice(data);
+}
+
+export async function updateRemoteInvoiceByQuoteId(quoteId, payload) {
+  if (!hasSupabaseConfig || !supabase || !invoicesTableAvailable || !quoteId) {
+    return null;
+  }
+
+  console.log("SUPABASE INVOICE SYNC LOOKUP START", {
+    quoteId,
+    query: "invoices.eq(quote_id, quoteId)",
+    updateMethod: "lookup-by-quote_id"
+  });
+
+  const invoice = await loadRemoteInvoiceByQuoteId(quoteId);
+
+  if (!invoice?.dbId) {
+    console.warn("SUPABASE INVOICE SYNC LOOKUP MISS", {
+      quoteId,
+      reason: "No invoice found for the provided quote_id"
+    });
+    return null;
+  }
+
+  console.log("SUPABASE INVOICE SYNC LOOKUP SUCCESS", {
+    quoteId,
+    dbInvoiceId: invoice.dbId,
+    invoiceNumber: invoice.invoiceNumber || null,
+    updateMethod: "update-by-db-id-after-quote-lookup"
+  });
+
+  return updateRemoteInvoice(invoice.dbId, payload);
 }
 
 export async function loadRemoteInvoices() {
