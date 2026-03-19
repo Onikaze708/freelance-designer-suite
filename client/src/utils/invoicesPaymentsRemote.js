@@ -44,7 +44,7 @@ async function generateNextInvoiceNumber() {
   const year = new Date().getFullYear();
   const { data, error } = await supabase.from("invoices").select("invoice_number");
   if (error) {
-    throw new Error(error.message || "No se pudo calcular el prÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ximo nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âºmero de factura");
+    throw new Error(error.message || "No se pudo calcular el prÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³ximo nÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âºmero de factura");
   }
 
   const maxIndex = (data || []).reduce((highest, row) => {
@@ -274,7 +274,7 @@ export async function createRemoteInvoice(payload) {
 
   const userId = await getAuthenticatedUserId();
   if (!userId) {
-    throw new Error("No hay una sesiÃƒÆ’Ã‚Â³n autenticada para crear facturas");
+    throw new Error("No hay una sesiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n autenticada para crear facturas");
   }
 
   const invoiceNumber = payload.invoiceNumber || (await generateNextInvoiceNumber());
@@ -323,7 +323,7 @@ export async function updateRemoteInvoice(id, payload) {
 
   if (!isUuid(id)) {
     console.error("INVALID SUPABASE INVOICE ID", { file: "invoicesPaymentsRemote.js", fn: "updateRemoteInvoice", invoiceId: id, expectedType: "uuid" });
-    throw new Error("El id real de la factura no es un UUID vÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡lido.");
+    throw new Error("El id real de la factura no es un UUID vÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡lido.");
   }
 
   const { data: existingInvoice, error: existingError } = await supabase
@@ -387,11 +387,26 @@ export async function deleteRemoteInvoice(id) {
     return null;
   }
 
+  console.log("SUPABASE INVOICE DELETE START", { invoiceId: id, query: "invoices.eq(id, invoiceId)" });
+
+  if (!isUuid(id)) {
+    console.error("INVALID SUPABASE INVOICE DELETE ID", { file: "invoicesPaymentsRemote.js", fn: "deleteRemoteInvoice", invoiceId: id, expectedType: "uuid" });
+    throw new Error("El id real de la factura no es un UUID válido.");
+  }
+
   const { error } = await supabase.from("invoices").delete().eq("id", id);
   if (error) {
+    console.error("SUPABASE INVOICE DELETE ERROR", {
+      invoiceId: id,
+      message: error.message || "",
+      code: error.code || "",
+      details: error.details || "",
+      hint: error.hint || ""
+    });
     throw new Error(error.message || "No se pudo eliminar la factura en Supabase");
   }
 
+  console.log("SUPABASE INVOICE DELETE SUCCESS", { invoiceId: id });
   return { ok: true };
 }
 
@@ -402,7 +417,7 @@ export async function createRemotePayment(payload) {
 
   const userId = await getAuthenticatedUserId();
   if (!userId) {
-    throw new Error("No hay una sesiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n autenticada para registrar pagos");
+    throw new Error("No hay una sesiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n autenticada para registrar pagos");
   }
 
   const { data, error } = await supabase
@@ -425,7 +440,7 @@ export async function migrateLocalInvoicesToRemote(localInvoices, references = {
 
   const userId = await getAuthenticatedUserId();
   if (!userId) {
-    throw new Error("No hay una sesiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n autenticada para migrar facturas");
+    throw new Error("No hay una sesiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n autenticada para migrar facturas");
   }
 
   const localQuotes = Array.isArray(references.localQuotes) ? references.localQuotes : [];
@@ -465,7 +480,7 @@ export async function migrateLocalPaymentsToRemote(localPayments, references = {
 
   const userId = await getAuthenticatedUserId();
   if (!userId) {
-    throw new Error("No hay una sesiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n autenticada para migrar pagos");
+    throw new Error("No hay una sesiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n autenticada para migrar pagos");
   }
 
   const localInvoices = Array.isArray(references.localInvoices) ? references.localInvoices : [];

@@ -44,8 +44,8 @@ function normalizeAmount(value) {
 function buildRecentActivity(data) {
   const quoteItems = data.quotes.map((quote) => ({
     id: `quote-${quote.id}`,
-    type: "Cotización",
-    title: quote.quoteNumber || "Cotización",
+    type: "CotizaciÃƒÂ³n",
+    title: quote.quoteNumber || "CotizaciÃƒÂ³n",
     subtitle: quote.clientSnapshot?.businessName || quote.clientSnapshot?.name || quote.clientName || "Sin cliente",
     amount: normalizeAmount(quote.totals?.total),
     date: quote.updatedAt || quote.createdAt || quote.date
@@ -126,12 +126,12 @@ function Dashboard({ data }) {
       <SectionHeader
         eyebrow="Resumen"
         title="Panel principal"
-        description="Consulta el estado general del estudio y entra a estadísticas cuando quieras revisar números con más detalle."
+        description="Consulta el estado general del estudio y entra a estadÃƒÂ­sticas cuando quieras revisar nÃƒÂºmeros con mÃƒÂ¡s detalle."
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Clientes" value={String(data.clients.length)} hint="Base activa de clientes del estudio." />
-        <StatCard label="Servicios" value={String(data.services.length)} hint="Catálogo disponible para cotizar." />
+        <StatCard label="Servicios" value={String(data.services.length)} hint="CatÃƒÂ¡logo disponible para cotizar." />
         <StatCard label="Cotizaciones activas" value={String(data.quotes.filter((quote) => quote.status !== "archived").length)} hint="Propuestas visibles en el flujo principal." />
         <StatCard label="Pendiente por cobrar" value={formatCurrency(stats.pendingToCollect, data.settings.currency)} hint="Saldo actual pendiente de cobro." />
       </div>
@@ -153,7 +153,7 @@ function Dashboard({ data }) {
               <p className="mt-2 text-2xl font-semibold text-ink">{stats.newClientsThisMonth}</p>
             </div>
             <div className="rounded-2xl bg-sand px-4 py-4 text-sm">
-              <p className="text-slate-500">Aprobación</p>
+              <p className="text-slate-500">AprobaciÃƒÂ³n</p>
               <p className="mt-2 text-2xl font-semibold text-ink">{Math.round(stats.approvalRate * 100)}%</p>
             </div>
           </div>
@@ -168,10 +168,10 @@ function Dashboard({ data }) {
                   <span className="font-semibold text-ink">{activity.title}</span>
                   <span className="text-slate-500">{formatCurrency(activity.amount, data.settings.currency)}</span>
                 </div>
-                <p className="mt-1 text-slate-500">{activity.type} · {activity.subtitle} · {formatDate(activity.date)}</p>
+                <p className="mt-1 text-slate-500">{activity.type} Ã‚Â· {activity.subtitle} Ã‚Â· {formatDate(activity.date)}</p>
               </div>
             ))}
-            {stats.recentActivity.length === 0 ? <p className="text-sm text-slate-500">Aún no hay actividad reciente registrada.</p> : null}
+            {stats.recentActivity.length === 0 ? <p className="text-sm text-slate-500">AÃƒÂºn no hay actividad reciente registrada.</p> : null}
           </div>
         </div>
       </div>
@@ -185,25 +185,25 @@ function StatisticsSection({ data }) {
   return (
     <div className="space-y-4">
       <SectionHeader
-        eyebrow="Analítica"
-        title="Estadísticas"
-        description="Revisa métricas de cotizaciones, facturación, cobros y servicios más solicitados del estudio."
+        eyebrow="AnalÃƒÂ­tica"
+        title="EstadÃƒÂ­sticas"
+        description="Revisa mÃƒÂ©tricas de cotizaciones, facturaciÃƒÂ³n, cobros y servicios mÃƒÂ¡s solicitados del estudio."
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Cotizado este mes" value={formatCurrency(stats.totalQuotedThisMonth, data.settings.currency)} hint={`${stats.quotesCreatedThisMonth} cotizaciones creadas este mes.`} />
         <StatCard label="Facturado este mes" value={formatCurrency(stats.totalInvoicedThisMonth, data.settings.currency)} hint="Solo facturas emitidas en el mes actual." />
-        <StatCard label="Pendiente por cobrar" value={formatCurrency(stats.pendingToCollect, data.settings.currency)} hint="Facturas aún no marcadas como pagadas." />
+        <StatCard label="Pendiente por cobrar" value={formatCurrency(stats.pendingToCollect, data.settings.currency)} hint="Facturas aÃƒÂºn no marcadas como pagadas." />
         <StatCard label="Clientes nuevos" value={String(stats.newClientsThisMonth)} hint="Altas creadas durante el mes actual." />
         <StatCard label="Cotizaciones del mes" value={String(stats.quotesCreatedThisMonth)} hint="Nuevas propuestas emitidas este mes." />
         <StatCard label="Cotizaciones aprobadas" value={String(stats.approvedQuotes)} hint="Propuestas con estado aprobado." />
-        <StatCard label="Tasa de aprobación" value={`${Math.round(stats.approvalRate * 100)}%`} hint="Aprobadas / total de cotizaciones." />
-        <StatCard label="Valor promedio" value={formatCurrency(stats.averageQuoteValue, data.settings.currency)} hint="Promedio por cotización guardada." />
+        <StatCard label="Tasa de aprobaciÃƒÂ³n" value={`${Math.round(stats.approvalRate * 100)}%`} hint="Aprobadas / total de cotizaciones." />
+        <StatCard label="Valor promedio" value={formatCurrency(stats.averageQuoteValue, data.settings.currency)} hint="Promedio por cotizaciÃƒÂ³n guardada." />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
         <div className="panel p-6">
-          <h3 className="text-xl font-semibold text-ink">Servicios más cotizados</h3>
+          <h3 className="text-xl font-semibold text-ink">Servicios mÃƒÂ¡s cotizados</h3>
           <div className="mt-4 space-y-3">
             {stats.topQuotedServices.map((service) => (
               <div key={service.name} className="rounded-2xl border border-slate-100 px-4 py-3 text-sm">
@@ -214,7 +214,7 @@ function StatisticsSection({ data }) {
                 <p className="mt-1 text-slate-500">Total cotizado: {formatCurrency(service.total, data.settings.currency)}</p>
               </div>
             ))}
-            {stats.topQuotedServices.length === 0 ? <p className="text-sm text-slate-500">Aún no hay suficientes cotizaciones para detectar servicios destacados.</p> : null}
+            {stats.topQuotedServices.length === 0 ? <p className="text-sm text-slate-500">AÃƒÂºn no hay suficientes cotizaciones para detectar servicios destacados.</p> : null}
           </div>
         </div>
 
@@ -227,10 +227,10 @@ function StatisticsSection({ data }) {
                   <span className="font-semibold text-ink">{activity.title}</span>
                   <span className="text-slate-500">{formatCurrency(activity.amount, data.settings.currency)}</span>
                 </div>
-                <p className="mt-1 text-slate-500">{activity.type} · {activity.subtitle} · {formatDate(activity.date)}</p>
+                <p className="mt-1 text-slate-500">{activity.type} Ã‚Â· {activity.subtitle} Ã‚Â· {formatDate(activity.date)}</p>
               </div>
             ))}
-            {stats.recentActivity.length === 0 ? <p className="text-sm text-slate-500">Aún no hay actividad reciente registrada.</p> : null}
+            {stats.recentActivity.length === 0 ? <p className="text-sm text-slate-500">AÃƒÂºn no hay actividad reciente registrada.</p> : null}
           </div>
         </div>
 
@@ -248,11 +248,11 @@ function StatisticsSection({ data }) {
                     <span className="font-semibold text-ink">{client.businessName || client.name}</span>
                     <span>{formatCurrency(total, data.settings.currency)}</span>
                   </div>
-                  <p className="mt-1 text-slate-500">Último trabajo: {formatDate(latest)}</p>
+                  <p className="mt-1 text-slate-500">ÃƒÅ¡ltimo trabajo: {formatDate(latest)}</p>
                 </div>
               );
             })}
-            {data.clients.length === 0 ? <p className="text-sm text-slate-500">Todavía no hay clientes registrados.</p> : null}
+            {data.clients.length === 0 ? <p className="text-sm text-slate-500">TodavÃƒÂ­a no hay clientes registrados.</p> : null}
           </div>
         </div>
       </div>
@@ -273,7 +273,7 @@ function ClientsSection({ clients, onSaveClient, onDeleteClient, dataSource }) {
     <div className="space-y-4">
       <SectionHeader
         title="Clientes"
-        description="Guarda los datos esenciales y reutiliza la información en futuras cotizaciones e invoices."
+        description="Guarda los datos esenciales y reutiliza la informaciÃƒÂ³n en futuras cotizaciones e invoices."
       />
 
       <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-600">
@@ -312,7 +312,7 @@ function ClientsSection({ clients, onSaveClient, onDeleteClient, dataSource }) {
                 <th className="px-4 py-3">Cliente</th>
                 <th className="px-4 py-3">Negocio</th>
                 <th className="px-4 py-3">Correo</th>
-                <th className="px-4 py-3">Teléfono</th>
+                <th className="px-4 py-3">TelÃƒÂ©fono</th>
                 <th className="px-4 py-3">Acciones</th>
               </tr>
             </thead>
@@ -331,7 +331,7 @@ function ClientsSection({ clients, onSaveClient, onDeleteClient, dataSource }) {
               {clients.length === 0 ? (
                 <tr className="border-t border-slate-100">
                   <td className="px-4 py-6 text-center text-sm text-slate-500" colSpan={5}>
-                    Aún no hay clientes guardados. Puedes crear uno desde el formulario superior.
+                    AÃƒÂºn no hay clientes guardados. Puedes crear uno desde el formulario superior.
                   </td>
                 </tr>
               ) : null}
@@ -349,9 +349,9 @@ function ServicesSection({ services, onSaveService, onDeleteService }) {
   return (
     <div className="space-y-4">
       <SectionHeader
-        eyebrow="Catálogo"
+        eyebrow="CatÃƒÂ¡logo"
         title="Servicios"
-        description="Catálogo profesional para un estudio pequeño, con opciones configurables por servicio."
+        description="CatÃƒÂ¡logo profesional para un estudio pequeÃƒÂ±o, con opciones configurables por servicio."
       />
 
       <ServiceForm
@@ -411,7 +411,7 @@ function EditorialSection({ settings, onSaveQuote }) {
       <SectionHeader
         eyebrow="Editorial"
         title="Calculador Editorial"
-        description="Cotiza libros para autores independientes con maquetación, portada, ebook, Amazon KDP e impresión con margen."
+        description="Cotiza libros para autores independientes con maquetaciÃƒÂ³n, portada, ebook, Amazon KDP e impresiÃƒÂ³n con margen."
       />
       <EditorialQuoteCalculator settings={settings} onSaveQuote={onSaveQuote} />
     </div>
@@ -422,8 +422,8 @@ function ProductionSection({ settings, onSaveQuote }) {
   return (
     <div className="space-y-4">
       <SectionHeader
-        eyebrow="Producción"
-        title="Margen de Impresión"
+        eyebrow="ProducciÃƒÂ³n"
+        title="Margen de ImpresiÃƒÂ³n"
         description="Calcula precio final, margen y ganancia de productos impresos o promocionales producidos por terceros."
       />
       <ProductionCalculator settings={settings} onSaveQuote={onSaveQuote} />
@@ -556,8 +556,10 @@ function getInvoiceDbId(invoice) {
   return invoice?.dbId || invoice?.id || null;
 }
 
-function InvoicesSection({ data, onUpdateInvoice }) {
+function InvoicesSection({ data, onUpdateInvoice, onDeleteInvoice }) {
   const [selectedInvoiceUiId, setSelectedInvoiceUiId] = useState(getInvoiceUiId(data.invoices[0]));
+  const [invoiceError, setInvoiceError] = useState("");
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
   const selectedInvoice = data.invoices.find((invoice) => getInvoiceUiId(invoice) === selectedInvoiceUiId) || data.invoices[0];
 
   function openInvoiceEmailDraft(invoice) {
@@ -565,18 +567,43 @@ function InvoicesSection({ data, onUpdateInvoice }) {
   }
 
   useEffect(() => {
-    if (!selectedInvoiceUiId && data.invoices[0]) {
-      setSelectedInvoiceUiId(getInvoiceUiId(data.invoices[0]));
+    const selectedStillExists = data.invoices.some((invoice) => getInvoiceUiId(invoice) === selectedInvoiceUiId);
+    if (!selectedStillExists) {
+      setSelectedInvoiceUiId(data.invoices[0] ? getInvoiceUiId(data.invoices[0]) : "");
     }
   }, [data.invoices, selectedInvoiceUiId]);
+
+  async function handleDelete(invoice) {
+    const dbInvoiceId = getInvoiceDbId(invoice);
+    const shouldDelete = window.confirm("Â¿Seguro que deseas eliminar esta factura?");
+    if (!shouldDelete || !dbInvoiceId) {
+      return;
+    }
+
+    try {
+      setInvoiceError("");
+      setInvoiceLoading(true);
+      if (getInvoiceUiId(invoice) === selectedInvoiceUiId) {
+        setSelectedInvoiceUiId("");
+      }
+      await onDeleteInvoice(dbInvoiceId);
+    } catch (error) {
+      setInvoiceError(error?.message || "No se pudo eliminar la factura.");
+      setSelectedInvoiceUiId(getInvoiceUiId(invoice));
+    } finally {
+      setInvoiceLoading(false);
+    }
+  }
 
   return (
     <div className="space-y-4">
       <SectionHeader
-        eyebrow="Facturación"
+        eyebrow="FacturaciÃ³n"
         title="Facturas"
         description="Convierte cotizaciones aprobadas, actualiza estados de pago y comparte cobro por PayPal con QR."
       />
+
+      {invoiceError ? <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">{invoiceError}</div> : null}
 
       <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
         <div className="panel overflow-hidden">
@@ -588,21 +615,33 @@ function InvoicesSection({ data, onUpdateInvoice }) {
                   <th className="px-4 py-3">Cliente</th>
                   <th className="px-4 py-3">Estado</th>
                   <th className="px-4 py-3">Total</th>
+                  <th className="px-4 py-3">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {data.invoices.map((invoice) => (
                   <tr
                     key={getInvoiceUiId(invoice)}
-                    className={`cursor-pointer border-t border-slate-100 ${getInvoiceUiId(selectedInvoice) === getInvoiceUiId(invoice) ? "bg-mist/70" : ""}`}
-                    onClick={() => setSelectedInvoiceUiId(getInvoiceUiId(invoice))}
+                    className={`border-t border-slate-100 ${getInvoiceUiId(selectedInvoice) === getInvoiceUiId(invoice) ? "bg-mist/70" : ""}`}
                   >
-                    <td className="px-4 py-3 font-semibold text-ink">{invoice.invoiceNumber}</td>
-                    <td className="px-4 py-3">{invoice.clientSnapshot?.businessName || invoice.clientSnapshot?.name}</td>
-                    <td className="px-4 py-3 capitalize">{invoice.status}</td>
-                    <td className="px-4 py-3">{formatCurrency(invoice.totals.total, data.settings.currency)}</td>
+                    <td className="cursor-pointer px-4 py-3 font-semibold text-ink" onClick={() => setSelectedInvoiceUiId(getInvoiceUiId(invoice))}>{invoice.invoiceNumber}</td>
+                    <td className="cursor-pointer px-4 py-3" onClick={() => setSelectedInvoiceUiId(getInvoiceUiId(invoice))}>{invoice.clientSnapshot?.businessName || invoice.clientSnapshot?.name}</td>
+                    <td className="cursor-pointer px-4 py-3 capitalize" onClick={() => setSelectedInvoiceUiId(getInvoiceUiId(invoice))}>{invoice.status}</td>
+                    <td className="cursor-pointer px-4 py-3" onClick={() => setSelectedInvoiceUiId(getInvoiceUiId(invoice))}>{formatCurrency(invoice.totals.total, data.settings.currency)}</td>
+                    <td className="px-4 py-3">
+                      <button className="button-secondary" type="button" disabled={invoiceLoading} onClick={() => handleDelete(invoice)}>
+                        {invoiceLoading && getInvoiceUiId(invoice) === selectedInvoiceUiId ? "Eliminando..." : "Eliminar"}
+                      </button>
+                    </td>
                   </tr>
                 ))}
+                {data.invoices.length === 0 ? (
+                  <tr className="border-t border-slate-100">
+                    <td className="px-4 py-6 text-center text-sm text-slate-500" colSpan={5}>
+                      AÃºn no hay facturas guardadas.
+                    </td>
+                  </tr>
+                ) : null}
               </tbody>
             </table>
           </div>
@@ -612,15 +651,23 @@ function InvoicesSection({ data, onUpdateInvoice }) {
           <div className="space-y-4">
             <form
               className="panel grid gap-4 p-6 md:grid-cols-2"
-              onSubmit={(event) => {
+              onSubmit={async (event) => {
                 event.preventDefault();
                 const formData = new FormData(event.currentTarget);
-                onUpdateInvoice(getInvoiceDbId(selectedInvoice), {
-                  status: formData.get("status"),
-                  paymentMethod: formData.get("paymentMethod"),
-                  paypalLink: formData.get("paypalLink"),
-                  notes: formData.get("notes")
-                });
+                try {
+                  setInvoiceError("");
+                  setInvoiceLoading(true);
+                  await onUpdateInvoice(getInvoiceDbId(selectedInvoice), {
+                    status: formData.get("status"),
+                    paymentMethod: formData.get("paymentMethod"),
+                    paypalLink: formData.get("paypalLink"),
+                    notes: formData.get("notes")
+                  });
+                } catch (error) {
+                  setInvoiceError(error?.message || "No se pudo guardar la factura.");
+                } finally {
+                  setInvoiceLoading(false);
+                }
               }}
             >
               <div>
@@ -646,7 +693,7 @@ function InvoicesSection({ data, onUpdateInvoice }) {
                 </select>
               </div>
               <div>
-                <label className="label">Método de pago</label>
+                <label className="label">MÃ©todo de pago</label>
                 <input name="paymentMethod" className="input" defaultValue={selectedInvoice.paymentMethod || "PayPal"} />
               </div>
               <div className="md:col-span-2">
@@ -658,14 +705,17 @@ function InvoicesSection({ data, onUpdateInvoice }) {
                 <textarea name="notes" className="input min-h-24" defaultValue={selectedInvoice.notes || ""} />
               </div>
               <div className="md:col-span-2 flex flex-wrap gap-3">
-                <button className="button-primary" type="submit">
-                  Guardar factura
+                <button className="button-primary" type="submit" disabled={invoiceLoading}>
+                  {invoiceLoading ? "Guardando..." : "Guardar factura"}
                 </button>
-                <button className="button-secondary" type="button" onClick={() => exportInvoicePdf(selectedInvoice, data.settings)}>
+                <button className="button-secondary" type="button" onClick={() => exportInvoicePdf(selectedInvoice, data.settings)} disabled={invoiceLoading}>
                   Descargar factura PDF
                 </button>
-                <button className="button-secondary" type="button" onClick={() => openInvoiceEmailDraft(selectedInvoice)}>
+                <button className="button-secondary" type="button" onClick={() => openInvoiceEmailDraft(selectedInvoice)} disabled={invoiceLoading}>
                   Preparar email
+                </button>
+                <button className="button-secondary" type="button" onClick={() => handleDelete(selectedInvoice)} disabled={invoiceLoading}>
+                  {invoiceLoading ? "Eliminando..." : "Eliminar"}
                 </button>
               </div>
             </form>
@@ -673,19 +723,20 @@ function InvoicesSection({ data, onUpdateInvoice }) {
             <PaymentQrCard link={selectedInvoice.paypalLink || data.settings.paypalLink} title="QR para cobrar por PayPal" />
           </div>
         ) : (
-          <div className="panel p-6 text-sm text-slate-500">Convierte una cotización en factura para verla aquí.</div>
+          <div className="panel p-6 text-sm text-slate-500">Convierte una cotizaciÃ³n en factura para verla aquÃ­.</div>
         )}
       </div>
     </div>
   );
 }
+
 function PaymentsSection({ data }) {
   return (
     <div className="space-y-4">
       <SectionHeader
         eyebrow="Seguimiento"
         title="Historial de pagos"
-        description="Visualiza qué se ha cobrado, cuánto y a qué cliente corresponde cada pago registrado."
+        description="Visualiza quÃƒÂ© se ha cobrado, cuÃƒÂ¡nto y a quÃƒÂ© cliente corresponde cada pago registrado."
       />
 
       <div className="panel overflow-hidden">
@@ -696,7 +747,7 @@ function PaymentsSection({ data }) {
                 <th className="px-4 py-3">Fecha</th>
                 <th className="px-4 py-3">Factura</th>
                 <th className="px-4 py-3">Cliente</th>
-                <th className="px-4 py-3">Método</th>
+                <th className="px-4 py-3">MÃƒÂ©todo</th>
                 <th className="px-4 py-3">Monto</th>
               </tr>
             </thead>
@@ -716,7 +767,7 @@ function PaymentsSection({ data }) {
               })}
             </tbody>
           </table>
-          {data.payments.length === 0 ? <p className="p-6 text-sm text-slate-500">Aún no hay pagos registrados.</p> : null}
+          {data.payments.length === 0 ? <p className="p-6 text-sm text-slate-500">AÃƒÂºn no hay pagos registrados.</p> : null}
         </div>
       </div>
     </div>
@@ -839,7 +890,7 @@ export default function App() {
         : await api.createQuote({ ...quote, status: "draft" });
 
       if (!savedQuote?.id) {
-        throw new Error("Error al guardar cotización");
+        throw new Error("Error al guardar cotizaciÃƒÂ³n");
       }
 
       setEditingQuote(null);
@@ -847,12 +898,12 @@ export default function App() {
       setQuoteFeedback(
         savedQuote?.syncWarning
           ? { type: "warning", message: savedQuote.syncWarning }
-          : { type: "success", message: "Cotización guardada correctamente" }
+          : { type: "success", message: "CotizaciÃƒÂ³n guardada correctamente" }
       );
       setActiveSection("quotes");
       return savedQuote;
     } catch (nextError) {
-      const message = nextError?.message || "Error al guardar cotización";
+      const message = nextError?.message || "Error al guardar cotizaciÃƒÂ³n";
       setQuoteFeedback({ type: "error", message });
       throw nextError;
     }
@@ -897,7 +948,7 @@ export default function App() {
   }
 
   async function handleDeleteQuote(quote) {
-    const shouldDelete = window.confirm("¿Seguro que deseas eliminar esta cotización?");
+    const shouldDelete = window.confirm("Ã‚Â¿Seguro que deseas eliminar esta cotizaciÃƒÂ³n?");
     if (!shouldDelete) {
       return;
     }
@@ -912,6 +963,11 @@ export default function App() {
 
   async function handleUpdateInvoice(invoiceId, payload) {
     await api.updateInvoice(invoiceId, payload);
+    await loadApp();
+  }
+
+  async function handleDeleteInvoice(invoiceId) {
+    await api.deleteInvoice(invoiceId);
     await loadApp();
   }
 
@@ -986,14 +1042,14 @@ export default function App() {
               quotesSource={quotesSource}
             />
           ) : null}
-          {activeSection === "invoices" ? <InvoicesSection data={data} onUpdateInvoice={handleUpdateInvoice} /> : null}
+          {activeSection === "invoices" ? <InvoicesSection data={data} onUpdateInvoice={handleUpdateInvoice} onDeleteInvoice={handleDeleteInvoice} /> : null}
           {activeSection === "payments" ? <PaymentsSection data={data} /> : null}
           {activeSection === "settings" ? (
             <div className="space-y-4">
               <SectionHeader
                 eyebrow="Negocio"
-                title="Configuración"
-                description="Ajusta datos del estudio, reglas de cálculo y textos base para cotizaciones y facturas."
+                title="ConfiguraciÃƒÂ³n"
+                description="Ajusta datos del estudio, reglas de cÃƒÂ¡lculo y textos base para cotizaciones y facturas."
               />
               <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-600">
                 <span className="font-medium text-ink">Data Source:</span>
@@ -1003,8 +1059,8 @@ export default function App() {
               <div className="panel p-6 text-sm text-slate-600">
                 <p className="font-semibold text-ink">Estructura futura preparada</p>
                 <p className="mt-2">
-                  El proyecto ya está separado para agregar después integración real con PayPal API, membresías,
-                  firmas, envíos por email y PDFs más premium sin reescribir la base.
+                  El proyecto ya estÃƒÂ¡ separado para agregar despuÃƒÂ©s integraciÃƒÂ³n real con PayPal API, membresÃƒÂ­as,
+                  firmas, envÃƒÂ­os por email y PDFs mÃƒÂ¡s premium sin reescribir la base.
                 </p>
               </div>
             </div>

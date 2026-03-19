@@ -371,7 +371,7 @@ export const localApi = {
     const saved = updateLocalStore((store) => {
       const quote = store.quotes.find((item) => item.id === id);
       if (!quote) {
-        throw new Error("CotizaciÃ³n no encontrada");
+        throw new Error("CotizaciÃƒÂ³n no encontrada");
       }
 
       const invoice = withTimestamps({
@@ -426,6 +426,14 @@ export const localApi = {
       return store;
     });
     return Promise.resolve(saved.invoices.find((item) => item.id === id));
+  },
+  deleteInvoice(id) {
+    const saved = updateLocalStore((store) => {
+      store.invoices = store.invoices.filter((invoice) => invoice.id !== id);
+      store.payments = store.payments.filter((payment) => payment.invoiceId !== id);
+      return store;
+    });
+    return Promise.resolve({ ok: true, invoices: saved.invoices });
   },
   updateSettings(payload) {
     const saved = updateLocalStore((store) => {

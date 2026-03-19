@@ -1,7 +1,7 @@
 import { localApi, readLocalStore, syncLocalClients, syncLocalInvoices, syncLocalPayments, syncLocalQuotes, syncLocalSettings } from "./utils/localStore";
 import { createRemoteClient, deleteRemoteClient, loadRemoteClients, updateRemoteClient } from "./utils/clientsRemote";
 import { createRemoteQuote, deleteRemoteQuote, loadRemoteQuotes, migrateLocalQuotesToRemote, updateRemoteQuote } from "./utils/quotesRemote";
-import { createRemoteInvoice, loadRemoteInvoices, loadRemotePayments, migrateLocalInvoicesToRemote, migrateLocalPaymentsToRemote, updateRemoteInvoice } from "./utils/invoicesPaymentsRemote";
+import { createRemoteInvoice, deleteRemoteInvoice, loadRemoteInvoices, loadRemotePayments, migrateLocalInvoicesToRemote, migrateLocalPaymentsToRemote, updateRemoteInvoice } from "./utils/invoicesPaymentsRemote";
 import { loadRemoteStudioSettings, saveRemoteStudioSettings } from "./utils/studioSettingsRemote";
 import { hasSupabaseConfig, supabase } from "./utils/supabaseClient";
 
@@ -217,12 +217,12 @@ async function hydrateInvoicesAndPayments(appData, originalLocalData) {
 
 export async function signInWithPassword({ email, password }) {
   if (!hasSupabaseConfig || !supabase) {
-    throw new Error("Supabase Auth no estÃƒÆ’Ã‚Â¡ configurado.");
+    throw new Error("Supabase Auth no estÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ configurado.");
   }
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
-    throw new Error(error.message || "No se pudo iniciar sesiÃƒÆ’Ã‚Â³n.");
+    throw new Error(error.message || "No se pudo iniciar sesiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n.");
   }
 }
 
@@ -233,7 +233,7 @@ export async function signOut() {
 
   const { error } = await supabase.auth.signOut();
   if (error) {
-    throw new Error(error.message || "No se pudo cerrar sesiÃƒÆ’Ã‚Â³n.");
+    throw new Error(error.message || "No se pudo cerrar sesiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n.");
   }
 }
 
@@ -244,7 +244,7 @@ export async function getCurrentSession() {
 
   const { data, error } = await supabase.auth.getSession();
   if (error) {
-    throw new Error(error.message || "No se pudo obtener la sesiÃƒÆ’Ã‚Â³n.");
+    throw new Error(error.message || "No se pudo obtener la sesiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n.");
   }
 
   return data.session;
@@ -334,11 +334,11 @@ export const api = {
       try {
         const remoteQuote = await createRemoteQuote(payload);
         if (!remoteQuote) {
-          throw new Error("La tabla quotes no estÃƒÆ’Ã‚Â¡ disponible en Supabase o no respondiÃƒÆ’Ã‚Â³ correctamente.");
+          throw new Error("La tabla quotes no estÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ disponible en Supabase o no respondiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ correctamente.");
         }
 
         if (!remoteQuote.id) {
-          throw new Error("No se recibiÃƒÆ’Ã‚Â³ la cotizaciÃƒÆ’Ã‚Â³n creada desde Supabase.");
+          throw new Error("No se recibiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ la cotizaciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n creada desde Supabase.");
         }
 
         const current = readLocalStore();
@@ -363,10 +363,10 @@ export const api = {
       try {
         const remoteQuote = await updateRemoteQuote(id, payload);
         if (!remoteQuote) {
-          throw new Error("La tabla quotes no estÃ¡ disponible en Supabase o no respondiÃ³ correctamente.");
+          throw new Error("La tabla quotes no estÃƒÂ¡ disponible en Supabase o no respondiÃƒÂ³ correctamente.");
         }
         if (!remoteQuote.id) {
-          throw new Error("No se recibiÃ³ la cotizaciÃ³n actualizada desde Supabase.");
+          throw new Error("No se recibiÃƒÂ³ la cotizaciÃƒÂ³n actualizada desde Supabase.");
         }
 
         const current = readLocalStore();
@@ -406,7 +406,7 @@ export const api = {
         const current = readLocalStore();
         const currentQuote = current.quotes.find((quote) => quote.id === id);
         if (!currentQuote) {
-          throw new Error("CotizaciÃ³n no encontrada");
+          throw new Error("CotizaciÃƒÂ³n no encontrada");
         }
 
         console.log("QUOTE CONVERT START", {
@@ -483,6 +483,21 @@ export const api = {
     }
 
     return localApi.updateInvoice(id, payload);
+  },
+  deleteInvoice: async (id) => {
+    if (hasSupabaseConfig && supabase) {
+      try {
+        const current = readLocalStore();
+        await deleteRemoteInvoice(id);
+        syncLocalInvoices(current.invoices.filter((invoice) => invoice.id !== id));
+        syncLocalPayments(current.payments.filter((payment) => payment.invoiceId !== id));
+        return { ok: true };
+      } catch (error) {
+        throw error;
+      }
+    }
+
+    return localApi.deleteInvoice(id);
   },
   updateSettings: async (payload) => {
     const localSettings = await localApi.updateSettings(payload);
