@@ -44,7 +44,7 @@ async function generateNextInvoiceNumber() {
   const year = new Date().getFullYear();
   const { data, error } = await supabase.from("invoices").select("invoice_number");
   if (error) {
-    throw new Error(error.message || "No se pudo calcular el próximo número de factura");
+    throw new Error(error.message || "No se pudo calcular el prÃ³ximo nÃºmero de factura");
   }
 
   const maxIndex = (data || []).reduce((highest, row) => {
@@ -175,61 +175,6 @@ function createPaymentFromInvoice(invoice) {
   };
 }
 
-export async function loadRemoteInvoiceByQuoteId(quoteId) {
-  if (!hasSupabaseConfig || !supabase || !invoicesTableAvailable || !quoteId) {
-    return null;
-  }
-
-  console.log("SUPABASE INVOICE LOOKUP BY QUOTE", { quoteId, expectedColumnType: "uuid", query: "invoices.eq(quote_id, quoteId)" });
-
-  const { data, error } = await supabase
-    .from("invoices")
-    .select("*")
-    .eq("quote_id", quoteId)
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    if (isMissingTableError(error)) {
-      invoicesTableAvailable = false;
-      return null;
-    }
-    throw new Error(error.message || "No se pudo localizar la factura asociada a la cotización");
-  }
-
-  return normalizeRemoteInvoice(data);
-}
-
-export async function updateRemoteInvoiceByQuoteId(quoteId, payload) {
-  if (!hasSupabaseConfig || !supabase || !invoicesTableAvailable || !quoteId) {
-    return null;
-  }
-
-  console.log("SUPABASE INVOICE SYNC LOOKUP START", {
-    quoteId,
-    query: "invoices.eq(quote_id, quoteId)",
-    updateMethod: "lookup-by-quote_id"
-  });
-
-  const invoice = await loadRemoteInvoiceByQuoteId(quoteId);
-
-  if (!invoice?.dbId) {
-    console.warn("SUPABASE INVOICE SYNC LOOKUP MISS", {
-      quoteId,
-      reason: "No invoice found for the provided quote_id"
-    });
-    return null;
-  }
-
-  console.log("SUPABASE INVOICE SYNC LOOKUP SUCCESS", {
-    quoteId,
-    dbInvoiceId: invoice.dbId,
-    invoiceNumber: invoice.invoiceNumber || null,
-    updateMethod: "update-by-db-id-after-quote-lookup"
-  });
-
-  return updateRemoteInvoice(invoice.dbId, payload);
-}
 
 export async function loadRemoteInvoices() {
   if (!hasSupabaseConfig || !supabase || !invoicesTableAvailable) {
@@ -276,15 +221,38 @@ export async function createRemoteInvoice(payload) {
   }
 
   const invoiceNumber = payload.invoiceNumber || (await generateNextInvoiceNumber());
+  const invoicePayload = buildInvoicePayload({ ...payload, invoiceNumber }, userId);
+
+  console.log("SUPABASE INVOICE INSERT START", {
+    quoteId: payload?.quoteId || null,
+    invoiceNumber,
+    mode: "insert"
+  });
+  console.log("SUPABASE INVOICE INSERT PAYLOAD", invoicePayload);
+
   const { data, error } = await supabase
     .from("invoices")
-    .insert(buildInvoicePayload({ ...payload, invoiceNumber }, userId))
+    .insert(invoicePayload)
     .select()
     .single();
 
   if (error) {
+    console.error("SUPABASE INVOICE INSERT ERROR", {
+      quoteId: payload?.quoteId || null,
+      invoiceNumber,
+      message: error.message || "",
+      code: error.code || "",
+      details: error.details || "",
+      hint: error.hint || ""
+    });
     throw new Error(error.message || "No se pudo crear la factura en Supabase");
   }
+
+  console.log("SUPABASE INVOICE INSERT RESPONSE", {
+    quoteId: payload?.quoteId || null,
+    invoiceNumber,
+    data
+  });
 
   return normalizeRemoteInvoice(data);
 }
@@ -298,7 +266,7 @@ export async function updateRemoteInvoice(id, payload) {
 
   if (!isUuid(id)) {
     console.error("INVALID SUPABASE INVOICE ID", { file: "invoicesPaymentsRemote.js", fn: "updateRemoteInvoice", invoiceId: id, expectedType: "uuid" });
-    throw new Error("El id real de la factura no es un UUID válido.");
+    throw new Error("El id real de la factura no es un UUID vÃ¡lido.");
   }
 
   const { data: existingInvoice, error: existingError } = await supabase
@@ -377,7 +345,7 @@ export async function createRemotePayment(payload) {
 
   const userId = await getAuthenticatedUserId();
   if (!userId) {
-    throw new Error("No hay una sesión autenticada para registrar pagos");
+    throw new Error("No hay una sesiÃ³n autenticada para registrar pagos");
   }
 
   const { data, error } = await supabase
@@ -400,7 +368,7 @@ export async function migrateLocalInvoicesToRemote(localInvoices, references = {
 
   const userId = await getAuthenticatedUserId();
   if (!userId) {
-    throw new Error("No hay una sesión autenticada para migrar facturas");
+    throw new Error("No hay una sesiÃ³n autenticada para migrar facturas");
   }
 
   const localQuotes = Array.isArray(references.localQuotes) ? references.localQuotes : [];
@@ -440,7 +408,7 @@ export async function migrateLocalPaymentsToRemote(localPayments, references = {
 
   const userId = await getAuthenticatedUserId();
   if (!userId) {
-    throw new Error("No hay una sesión autenticada para migrar pagos");
+    throw new Error("No hay una sesiÃ³n autenticada para migrar pagos");
   }
 
   const localInvoices = Array.isArray(references.localInvoices) ? references.localInvoices : [];

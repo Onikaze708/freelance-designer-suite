@@ -1,4 +1,4 @@
-﻿import seedData from "../data/local-seed-data.json";
+import seedData from "../data/local-seed-data.json";
 
 const STORAGE_KEY = "freelance-designer-suite.local-store.v1";
 const MOJIBAKE_PATTERN = /[\u00C3\u00C2\u00E2\uFFFD]/;
@@ -355,29 +355,6 @@ export const localApi = {
         updatedQuote = withTimestamps({ ...quote, ...payload }, quote);
         return updatedQuote;
       });
-
-      if (updatedQuote) {
-        store.invoices = store.invoices.map((invoice) => {
-          if (invoice.quoteId !== id) {
-            return invoice;
-          }
-
-          return withTimestamps({
-            ...invoice,
-            clientId: updatedQuote.clientId,
-            clientSnapshot: updatedQuote.clientSnapshot,
-            items: updatedQuote.items,
-            totals: updatedQuote.totals,
-            notes: updatedQuote.notes,
-            paymentTerms: updatedQuote.paymentTerms,
-            deliveryEstimate: updatedQuote.deliveryEstimate,
-            discountType: updatedQuote.discountType,
-            discountValue: updatedQuote.discountValue,
-            applyTax: updatedQuote.applyTax,
-            taxRate: updatedQuote.taxRate
-          }, invoice);
-        });
-      }
 
       return store;
     });

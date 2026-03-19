@@ -1,7 +1,7 @@
 import { localApi, readLocalStore, syncLocalClients, syncLocalInvoices, syncLocalPayments, syncLocalQuotes, syncLocalSettings } from "./utils/localStore";
 import { createRemoteClient, deleteRemoteClient, loadRemoteClients, updateRemoteClient } from "./utils/clientsRemote";
 import { createRemoteQuote, deleteRemoteQuote, loadRemoteQuotes, migrateLocalQuotesToRemote, updateRemoteQuote } from "./utils/quotesRemote";
-import { createRemoteInvoice, loadRemoteInvoices, loadRemotePayments, migrateLocalInvoicesToRemote, migrateLocalPaymentsToRemote, updateRemoteInvoice, updateRemoteInvoiceByQuoteId } from "./utils/invoicesPaymentsRemote";
+import { createRemoteInvoice, loadRemoteInvoices, loadRemotePayments, migrateLocalInvoicesToRemote, migrateLocalPaymentsToRemote, updateRemoteInvoice } from "./utils/invoicesPaymentsRemote";
 import { loadRemoteStudioSettings, saveRemoteStudioSettings } from "./utils/studioSettingsRemote";
 import { hasSupabaseConfig, supabase } from "./utils/supabaseClient";
 
@@ -75,23 +75,7 @@ function enableLocalMode() {
   persistLocalModePreference(true);
 }
 
-function buildInvoiceSyncPayloadFromQuote(invoice, quote) {
-  return {
-    ...invoice,
-    quoteId: quote.id,
-    clientId: quote.clientId,
-    clientSnapshot: quote.clientSnapshot,
-    items: quote.items,
-    totals: quote.totals,
-    notes: quote.notes,
-    paymentTerms: quote.paymentTerms,
-    deliveryEstimate: quote.deliveryEstimate,
-    discountType: quote.discountType,
-    discountValue: quote.discountValue,
-    applyTax: quote.applyTax,
-    taxRate: quote.taxRate
-  };
-}
+
 function buildApiUrl(path) {
   return `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 }
@@ -233,12 +217,12 @@ async function hydrateInvoicesAndPayments(appData, originalLocalData) {
 
 export async function signInWithPassword({ email, password }) {
   if (!hasSupabaseConfig || !supabase) {
-    throw new Error("Supabase Auth no estÃ¡ configurado.");
+    throw new Error("Supabase Auth no estÃƒÆ’Ã‚Â¡ configurado.");
   }
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
-    throw new Error(error.message || "No se pudo iniciar sesiÃ³n.");
+    throw new Error(error.message || "No se pudo iniciar sesiÃƒÆ’Ã‚Â³n.");
   }
 }
 
@@ -249,7 +233,7 @@ export async function signOut() {
 
   const { error } = await supabase.auth.signOut();
   if (error) {
-    throw new Error(error.message || "No se pudo cerrar sesiÃ³n.");
+    throw new Error(error.message || "No se pudo cerrar sesiÃƒÆ’Ã‚Â³n.");
   }
 }
 
@@ -260,7 +244,7 @@ export async function getCurrentSession() {
 
   const { data, error } = await supabase.auth.getSession();
   if (error) {
-    throw new Error(error.message || "No se pudo obtener la sesiÃ³n.");
+    throw new Error(error.message || "No se pudo obtener la sesiÃƒÆ’Ã‚Â³n.");
   }
 
   return data.session;
@@ -350,11 +334,11 @@ export const api = {
       try {
         const remoteQuote = await createRemoteQuote(payload);
         if (!remoteQuote) {
-          throw new Error("La tabla quotes no estÃ¡ disponible en Supabase o no respondiÃ³ correctamente.");
+          throw new Error("La tabla quotes no estÃƒÆ’Ã‚Â¡ disponible en Supabase o no respondiÃƒÆ’Ã‚Â³ correctamente.");
         }
 
         if (!remoteQuote.id) {
-          throw new Error("No se recibiÃ³ la cotizaciÃ³n creada desde Supabase.");
+          throw new Error("No se recibiÃƒÆ’Ã‚Â³ la cotizaciÃƒÆ’Ã‚Â³n creada desde Supabase.");
         }
 
         const current = readLocalStore();
@@ -387,47 +371,10 @@ export const api = {
 
         const current = readLocalStore();
         syncLocalQuotes(current.quotes.map((quote) => (quote.id === id ? remoteQuote : quote)));
-
-        console.log("QUOTE INVOICE SYNC START", {
-          quoteId: id,
-          lookupQuery: "invoices.eq(quote_id, quoteId)",
-          updateMethod: "lookup-by-quote_id"
-        });
-
-        const invoiceResult = await updateRemoteInvoiceByQuoteId(
-          id,
-          buildInvoiceSyncPayloadFromQuote(
-            current.invoices.find((invoice) => invoice.quoteId === id) || {},
-            remoteQuote
-          )
-        );
-
-        if (!invoiceResult?.invoice?.id) {
-          console.warn("QUOTE INVOICE SYNC WARNING", {
-            quoteId: id,
-            reason: "No related invoice found in Supabase for this quote_id"
-          });
-          setQuotesDataSource("Supabase");
-          return {
-            ...remoteQuote,
-            syncWarning: "La cotización se actualizó correctamente, pero no había una factura vinculada para sincronizar."
-          };
-        } else {
-          syncLocalInvoices(current.invoices.map((invoice) => (invoice.quoteId === id ? invoiceResult.invoice : invoice)));
-          if (invoiceResult.payment) {
-            syncLocalPayments([invoiceResult.payment, ...current.payments.filter((payment) => payment.id !== invoiceResult.payment.id)]);
-          }
-          console.log("QUOTE INVOICE SYNC SUCCESS", {
-            quoteId: id,
-            dbInvoiceId: invoiceResult.invoice.dbId || invoiceResult.invoice.id,
-            updateMethod: "lookup-by-quote_id"
-          });
-        }
-
         setQuotesDataSource("Supabase");
         return remoteQuote;
       } catch (error) {
-        console.error("QUOTE INVOICE SYNC FAILED", error);
+        console.error("QUOTE UPDATE FAILED", error);
         setQuotesDataSource("Supabase");
         throw error;
       }
@@ -459,13 +406,20 @@ export const api = {
         const current = readLocalStore();
         const currentQuote = current.quotes.find((quote) => quote.id === id);
         if (!currentQuote) {
-          throw new Error("Cotizaci?n no encontrada");
+          throw new Error("CotizaciÃ³n no encontrada");
         }
+
+        console.log("QUOTE CONVERT START", {
+          quoteId: id,
+          mode: "insert-new-invoice",
+          existingInvoicesForQuote: current.invoices.filter((invoice) => invoice.quoteId === id).length
+        });
 
         const remoteQuote = await updateRemoteQuote(id, { ...currentQuote, status: "approved" });
         syncLocalQuotes(current.quotes.map((quote) => (quote.id === id ? remoteQuote : quote)));
         setQuotesDataSource("Supabase");
-        const remoteInvoice = await createRemoteInvoice({
+
+        const invoicePayload = {
           quoteId: currentQuote.id,
           clientId: currentQuote.clientId,
           clientSnapshot: currentQuote.clientSnapshot,
@@ -478,12 +432,27 @@ export const api = {
           paymentMethod: "PayPal",
           paypalLink: payload?.paypalLink || current.settings?.paypalLink || "",
           status: "draft"
+        };
+
+        console.log("QUOTE CONVERT INVOICE PAYLOAD", {
+          quoteId: id,
+          payload: invoicePayload
         });
+
+        const remoteInvoice = await createRemoteInvoice(invoicePayload);
+
+        console.log("QUOTE CONVERT SUCCESS", {
+          quoteId: id,
+          dbInvoiceId: remoteInvoice?.dbId || remoteInvoice?.id || null,
+          invoiceNumber: remoteInvoice?.invoiceNumber || null
+        });
+
         const currentInvoices = readLocalStore().invoices;
         syncLocalInvoices([remoteInvoice, ...currentInvoices.filter((invoice) => invoice.id !== remoteInvoice.id)]);
         setQuotesDataSource("Supabase");
         return remoteInvoice;
       } catch (error) {
+        console.error("QUOTE CONVERT FAILED", error);
         setQuotesDataSource("Supabase");
         throw error;
       }
